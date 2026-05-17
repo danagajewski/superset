@@ -20,9 +20,10 @@ from __future__ import annotations
 
 from typing import Any
 
+from flask import current_app as app
 from flask_babel import gettext as __
 
-from superset import db
+from superset import db, is_feature_enabled
 from superset.commands.streaming_export.base import BaseStreamingCSVExportCommand
 from superset.errors import ErrorLevel, SupersetError, SupersetErrorType
 from superset.exceptions import SupersetErrorException, SupersetSecurityException
@@ -138,5 +139,10 @@ class StreamingSqlResultExportCommand(BaseStreamingCSVExportCommand):
         }:
             # remove extra row from `increased_limit`
             limit -= 1
+
+        if not is_feature_enabled("ALLOW_FULL_CSV_EXPORT"):
+            sql_max_row = app.config.get("SQL_MAX_ROW", 100000)
+            if limit is None or limit > sql_max_row:
+                limit = sql_max_row
 
         return limit
