@@ -2687,6 +2687,9 @@ class ExploreMixin:  # pylint: disable=too-many-public-methods
         if granularity not in self.dttm_cols and granularity is not None:
             granularity = self.main_dttm_col
 
+        if granularity is not None and granularity not in self.dttm_cols:
+            granularity = None
+
         extras = extras or {}
         time_grain = extras.get("time_grain_sqla")
 
@@ -2738,6 +2741,9 @@ class ExploreMixin:  # pylint: disable=too-many-public-methods
         # For backward compatibility
         if granularity not in self.dttm_cols and granularity is not None:
             granularity = self.main_dttm_col
+
+        if granularity is not None and granularity not in self.dttm_cols:
+            granularity = None
 
         columns_by_name: dict[str, "TableColumn"] = {
             col.column_name: col for col in self.columns
