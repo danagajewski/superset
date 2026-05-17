@@ -19,7 +19,7 @@ from __future__ import annotations
 import calendar
 import logging
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from functools import lru_cache
 from time import struct_time
 
@@ -79,6 +79,8 @@ def parse_human_datetime(human_readable: str) -> datetime:
         if parsed_flags & 2 == 0:
             parsed_dttm = parsed_dttm.replace(hour=0, minute=0, second=0)
         dttm = dttm_from_timetuple(parsed_dttm.utctimetuple())
+    if dttm.tzinfo is not None:
+        dttm = dttm.astimezone(timezone.utc).replace(tzinfo=None)
     return dttm
 
 
