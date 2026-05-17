@@ -2685,7 +2685,7 @@ class ExploreMixin:  # pylint: disable=too-many-public-methods
     ) -> SqlaQuery:
         """Querying any sqla table from this common interface"""
         if granularity not in self.dttm_cols and granularity is not None:
-            granularity = self.main_dttm_col
+            granularity = self.main_dttm_col if self.main_dttm_col else None
 
         if granularity is not None and granularity not in self.dttm_cols:
             granularity = None
@@ -2740,7 +2740,7 @@ class ExploreMixin:  # pylint: disable=too-many-public-methods
 
         # For backward compatibility
         if granularity not in self.dttm_cols and granularity is not None:
-            granularity = self.main_dttm_col
+            granularity = self.main_dttm_col if self.main_dttm_col else None
 
         if granularity is not None and granularity not in self.dttm_cols:
             granularity = None
@@ -2962,6 +2962,7 @@ class ExploreMixin:  # pylint: disable=too-many-public-methods
             # Use main dttm column to support index with secondary dttm columns.
             if (
                 self.always_filter_main_dttm
+                and self.main_dttm_col is not None
                 and self.main_dttm_col in self.dttm_cols
                 and self.main_dttm_col != dttm_col.column_name
                 and self.main_dttm_col not in removed_filters
