@@ -127,6 +127,10 @@ class BaseViz:  # pylint: disable=too-many-public-methods
         self.datasource = datasource
         self.request = request
         self.viz_type = form_data.get("viz_type")
+        if not form_data.get("color_scheme"):
+            form_data["color_scheme"] = current_app.config.get(
+                "DEFAULT_COLOR_SCHEME", "supersetColors"
+            )
         self.form_data = form_data
 
         self.query = ""
