@@ -1087,7 +1087,7 @@ class Database(CoreDatabase, AuditMixinNullable, ImportExportMixin):  # pylint: 
     def get_columns(self, table: Table) -> list[ResultSetColumnType]:
         with self.get_inspector(
             catalog=table.catalog,
-            schema=table.schema,
+            schema=table.schema or None,
         ) as inspector:
             return self.db_engine_spec.get_columns(
                 inspector, table, self.schema_options
