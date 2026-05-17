@@ -59,7 +59,16 @@ export function getInitialState({
     >;
     filterConfig.forEach(filter => {
       const { id } = filter;
-      filters[id] = filter;
+      const existingFilter = prevState?.filters?.[id];
+      if (filter.chartsInScope == null && existingFilter?.chartsInScope != null) {
+        filters[id] = {
+          ...filter,
+          chartsInScope: existingFilter.chartsInScope,
+          tabsInScope: existingFilter.tabsInScope,
+        };
+      } else {
+        filters[id] = filter;
+      }
     });
     state.filters = filters;
   } else {
