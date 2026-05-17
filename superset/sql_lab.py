@@ -396,6 +396,14 @@ def execute_sql_statements(  # noqa: C901
     if database.allow_run_async and not results_backend:
         raise SupersetResultsBackendNotConfigureException()
 
+    if query.limit is not None and (
+        not isinstance(query.limit, int) or query.limit < 1
+    ):
+        raise SqlLabException(
+            f"Invalid query limit: {query.limit!r}. "
+            "The limit must be a positive integer."
+        )
+
     logger.info("Query %s: Set query to 'running'", str(query_id))
     query.status = QueryStatus.RUNNING
     query.start_running_time = now_as_float()
