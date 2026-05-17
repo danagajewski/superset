@@ -19,7 +19,7 @@ from __future__ import annotations
 import calendar
 import logging
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from functools import lru_cache
 from time import struct_time
 
@@ -61,7 +61,12 @@ ORDINAL_MAP: dict[str, int] = {
 
 
 def parse_human_datetime(human_readable: str) -> datetime:
-    """Returns ``datetime.datetime`` from human readable strings"""
+    """Returns ``datetime.datetime`` from human readable strings
+
+    Always returns a timezone-naive datetime. If the parsed result is
+    timezone-aware it is first converted to UTC, then the timezone info
+    is stripped so that all callers receive a consistent naive datetime.
+    """
     x_periods = r"^\s*([0-9]+)\s+(second|minute|hour|day|week|month|quarter|year)s?\s*$"
     if re.search(x_periods, human_readable, re.IGNORECASE):
         raise TimeRangeAmbiguousError(human_readable)
@@ -79,6 +84,8 @@ def parse_human_datetime(human_readable: str) -> datetime:
         if parsed_flags & 2 == 0:
             parsed_dttm = parsed_dttm.replace(hour=0, minute=0, second=0)
         dttm = dttm_from_timetuple(parsed_dttm.utctimetuple())
+    if dttm.tzinfo is not None:
+        dttm = dttm.astimezone(timezone.utc).replace(tzinfo=None)
     return dttm
 
 
