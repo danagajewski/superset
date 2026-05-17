@@ -396,16 +396,12 @@ def execute_sql_statements(  # noqa: C901
     if database.allow_run_async and not results_backend:
         raise SupersetResultsBackendNotConfigureException()
 
-    if query.limit is not None and query.limit < 1:
-        raise SupersetErrorException(
-            SupersetError(
-                message=__(
-                    "The row limit must be a positive integer, got %(limit)s.",
-                    limit=query.limit,
-                ),
-                error_type=SupersetErrorType.INVALID_PAYLOAD_SCHEMA_ERROR,
-                level=ErrorLevel.ERROR,
-            )
+    if query.limit is not None and (
+        not isinstance(query.limit, int) or query.limit < 1
+    ):
+        raise SqlLabException(
+            f"Invalid query limit: {query.limit!r}. "
+            "The limit must be a positive integer."
         )
 
     logger.info("Query %s: Set query to 'running'", str(query_id))
