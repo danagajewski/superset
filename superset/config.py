@@ -909,6 +909,10 @@ COMMON_BOOTSTRAP_OVERRIDES_FUNC: Callable[  # noqa: E731
 # This is merely a default
 EXTRA_CATEGORICAL_COLOR_SCHEMES: list[dict[str, Any]] = []
 
+# Default color scheme used as a fallback when no scheme is explicitly selected.
+# Override this in superset_config.py to change the default for your deployment.
+DEFAULT_COLOR_SCHEME: str = "supersetColors"
+
 # -----------------------------------------------------------------------------
 # Theme System Configuration
 # -----------------------------------------------------------------------------
