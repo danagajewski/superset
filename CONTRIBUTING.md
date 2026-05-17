@@ -36,3 +36,7 @@ The Developer Portal includes comprehensive guides for:
 - [Development How-tos](https://superset.apache.org/developer_portal/contributing/howtos)
 
 Source for the Developer Portal documentation is [located here](https://github.com/apache/superset/tree/master/docs/developer_portal).
+
+## Quick Links
+- [Issue Tracker](https://github.com/apache/superset/issues)
+- [Discussion Forum](https://github.com/apache/superset/discussions)
