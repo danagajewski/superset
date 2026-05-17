@@ -350,8 +350,9 @@ class DatabaseParametersSchemaMixin:  # pylint: disable=too-few-public-methods
                 raise ValidationError(
                     [
                         _(
-                            'Engine spec "InvalidEngine" does not support '
-                            "being configured via individual parameters."
+                            'Engine spec "%(engine)s" does not support '
+                            "being configured via individual parameters.",
+                            engine=engine,
                         )
                     ]
                 )
