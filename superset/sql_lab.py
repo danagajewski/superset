@@ -389,6 +389,20 @@ def execute_sql_statements(  # noqa: C901
 
     query = get_query(query_id=query_id)
     payload: dict[str, Any] = {"query_id": query_id}
+
+    if query.limit is not None and query.limit < 1:
+        raise SupersetErrorException(
+            SupersetError(
+                message=__(
+                    "Invalid query limit: %(limit)s. The limit must be a positive "
+                    "integer.",
+                    limit=query.limit,
+                ),
+                error_type=SupersetErrorType.GENERIC_BACKEND_ERROR,
+                level=ErrorLevel.ERROR,
+            )
+        )
+
     database = query.database
     db_engine_spec = database.db_engine_spec
     db_engine_spec.patch()
