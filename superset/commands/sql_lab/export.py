@@ -124,6 +124,8 @@ class SqlResultExportCommand(BaseCommand):
             }:
                 # remove extra row from `increased_limit`
                 limit -= 1
+            if limit is None:
+                limit = app.config.get("ROW_LIMIT")
             df = self._query.database.get_df(
                 sql,
                 self._query.catalog,
