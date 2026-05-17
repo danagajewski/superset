@@ -20,6 +20,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from flask import current_app as app
 from flask_babel import gettext as __
 
 from superset import db
@@ -138,5 +139,8 @@ class StreamingSqlResultExportCommand(BaseStreamingCSVExportCommand):
         }:
             # remove extra row from `increased_limit`
             limit -= 1
+
+        if limit is None:
+            limit = app.config.get("ROW_LIMIT")
 
         return limit
