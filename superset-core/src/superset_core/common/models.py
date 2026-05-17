@@ -193,7 +193,6 @@ class Dataset(CoreModel):
     sql: str | None  # For virtual datasets
     description: str | None
     default_endpoint: str | None
-    is_featured: bool
     filter_select_enabled: bool
     offset: int
     cache_timeout: int

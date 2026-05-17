@@ -161,7 +161,6 @@ _COLUMN_DESCRIPTIONS: dict[str, str] = {
     "fetch_values_predicate": "SQL predicate for fetching filter values",
     "default_endpoint": "Default endpoint URL",
     "offset": "Row offset for queries",
-    "is_featured": "Whether this dataset is featured",
     "currency_code_column": "Column containing currency codes",
     # Dashboard-specific
     "dashboard_title": "Dashboard display title",
