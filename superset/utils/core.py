@@ -433,7 +433,7 @@ def cast_to_num(value: float | int | str | None) -> float | int | None:
 
 
 def cast_to_boolean(value: Any) -> bool | None:
-    """Casts a value to an int/float
+    """Casts a value to a boolean
 
     >>> cast_to_boolean(1)
     True
