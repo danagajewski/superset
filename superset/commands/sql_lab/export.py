@@ -23,7 +23,12 @@ import pandas as pd
 from flask import current_app as app
 from flask_babel import gettext as __
 
-from superset import db, results_backend, results_backend_use_msgpack
+from superset import (
+    db,
+    is_feature_enabled,
+    results_backend,
+    results_backend_use_msgpack,
+)
 from superset.commands.base import BaseCommand
 from superset.errors import ErrorLevel, SupersetError, SupersetErrorType
 from superset.exceptions import SupersetErrorException, SupersetSecurityException
@@ -124,6 +129,12 @@ class SqlResultExportCommand(BaseCommand):
             }:
                 # remove extra row from `increased_limit`
                 limit -= 1
+
+            if not is_feature_enabled("ALLOW_FULL_CSV_EXPORT"):
+                sql_max_row = app.config.get("SQL_MAX_ROW", 100000)
+                if limit is None or limit > sql_max_row:
+                    limit = sql_max_row
+
             df = self._query.database.get_df(
                 sql,
                 self._query.catalog,
