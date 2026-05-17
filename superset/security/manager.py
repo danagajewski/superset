@@ -3127,7 +3127,7 @@ class SupersetSecurityManager(  # pylint: disable=too-many-public-methods
                     return
 
             # REGULAR RBAC logic
-            # User can only acess the dashboard in case:
+            # User can only access the dashboard in case:
             #    It doesn't have any datasets; OR
             #    They have access to at least one dataset used.
             # We currently don't check if the dashboard is published,
