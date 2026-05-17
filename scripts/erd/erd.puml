@@ -112,7 +112,6 @@ rectangle "Data Assets" #black {
             id: INTEGER
             description: TEXT
             default_endpoint: TEXT
-            is_featured: BOOLEAN
             filter_select_enabled: BOOLEAN
             offset: INTEGER
             cache_timeout: INTEGER

@@ -110,7 +110,6 @@ def test_export(session: Session) -> None:
         database=database,
         offset=-8,
         description="This is the description",
-        is_featured=1,
         cache_timeout=3600,
         catalog="public",
         schema="my_schema",

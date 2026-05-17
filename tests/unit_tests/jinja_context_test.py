@@ -699,7 +699,6 @@ def test_dataset_macro(mocker: MockerFixture) -> None:
         database=Database(database_name="my_database", sqlalchemy_uri="sqlite://"),
         offset=-8,
         description="This is the description",
-        is_featured=1,
         cache_timeout=3600,
         schema="my_schema",
         sql=None,
