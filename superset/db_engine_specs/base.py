@@ -1846,7 +1846,7 @@ class BaseEngineSpec:  # pylint: disable=too-many-public-methods
         return convert_inspector_columns(
             cast(
                 list[SQLAColumnType],
-                inspector.get_columns(table.table, table.schema),
+                inspector.get_columns(table.table, table.schema or None),
             )
         )
 

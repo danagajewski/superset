@@ -593,7 +593,7 @@ class TrinoEngineSpec(PrestoBaseEngineSpec):
         # when that happens, using the method from the Presto base engine spec.
         try:
             # `SELECT * FROM information_schema.columns WHERE ...`
-            sqla_columns = inspector.get_columns(table.table, table.schema)
+            sqla_columns = inspector.get_columns(table.table, table.schema or None)
             base_cols = convert_inspector_columns(sqla_columns)
         except NoSuchTableError:
             # `SHOW COLUMNS FROM ...`
