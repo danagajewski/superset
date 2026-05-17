@@ -1365,7 +1365,6 @@ export function TableRenderer(props: TableRendererProps) {
 
         return (
           <td
-            role="gridcell"
             className="pvtVal"
             key={`pvtVal-${flatColKey}`}
             onClick={rowClickHandlers[flatColKey]}
@@ -1383,7 +1382,6 @@ export function TableRenderer(props: TableRendererProps) {
         const aggValue = agg.value();
         totalCell = (
           <td
-            role="gridcell"
             key="total"
             className="pvtTotal"
             onClick={rowTotalCallbacks[flatRowKey]}
@@ -1461,7 +1459,6 @@ export function TableRenderer(props: TableRendererProps) {
 
         return (
           <td
-            role="gridcell"
             className="pvtTotal pvtRowTotal"
             key={`total-${flatColKey}`}
             onClick={colTotalCallbacks[flatColKey]}
@@ -1479,7 +1476,6 @@ export function TableRenderer(props: TableRendererProps) {
         const aggValue = agg.value();
         grandTotalCell = (
           <td
-            role="gridcell"
             key="total"
             className="pvtGrandTotal pvtRowTotal"
             onClick={grandTotalCallback || undefined}
