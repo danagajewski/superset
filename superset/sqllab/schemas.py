@@ -14,7 +14,7 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
-from marshmallow import fields, Schema
+from marshmallow import fields, Schema, validate
 
 from superset.databases.schemas import ImportV1DatabaseSchema
 
@@ -62,7 +62,10 @@ class ExecutePayloadSchema(Schema):
     database_id = fields.Integer(required=True)
     sql = fields.String(required=True)
     client_id = fields.String(allow_none=True)
-    queryLimit = fields.Integer(allow_none=True)  # noqa: N815
+    queryLimit = fields.Integer(  # noqa: N815
+        allow_none=True,
+        validate=validate.Range(min=1),
+    )
     sql_editor_id = fields.String(allow_none=True)
     catalog = fields.String(allow_none=True)
     schema = fields.String(allow_none=True)
