@@ -162,14 +162,11 @@ export const getYAxisFormatter = (
 
 export function getTooltipTimeFormatter(
   format?: string,
-): TimeFormatter | StringConstructor {
-  if (format === SMART_DATE_ID) {
+): TimeFormatter {
+  if (format === SMART_DATE_ID || !format) {
     return getSmartDateVerboseFormatter();
   }
-  if (format) {
-    return getTimeFormatter(format);
-  }
-  return String;
+  return getTimeFormatter(format);
 }
 
 export function getXAxisFormatter(
