@@ -61,7 +61,12 @@ ORDINAL_MAP: dict[str, int] = {
 
 
 def parse_human_datetime(human_readable: str) -> datetime:
-    """Returns ``datetime.datetime`` from human readable strings"""
+    """Returns ``datetime.datetime`` from human readable strings
+
+    Always returns a timezone-naive datetime. If the parsed result is
+    timezone-aware it is first converted to UTC, then the timezone info
+    is stripped so that all callers receive a consistent naive datetime.
+    """
     x_periods = r"^\s*([0-9]+)\s+(second|minute|hour|day|week|month|quarter|year)s?\s*$"
     if re.search(x_periods, human_readable, re.IGNORECASE):
         raise TimeRangeAmbiguousError(human_readable)
