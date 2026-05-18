@@ -30,8 +30,12 @@ import chartQueries, {
 import Chart from './Chart';
 
 let capturedChartContainerProps: Record<string, unknown> = {};
+let shouldThrowInChartContainer = false;
 jest.mock('src/components/Chart/ChartContainer', () => {
   const MockChartContainer = (props: Record<string, unknown>) => {
+    if (shouldThrowInChartContainer) {
+      throw new Error('Chart rendering failed');
+    }
     capturedChartContainerProps = props;
     return <div data-test="chart-container" />;
   };
@@ -481,4 +485,17 @@ test('should pass filterState from dataMask to ChartContainer', () => {
     'filterState',
     mockFilterState,
   );
+});
+
+test('should render error boundary fallback when chart crashes', () => {
+  jest.spyOn(console, 'error').mockImplementation(() => {});
+  shouldThrowInChartContainer = true;
+  try {
+    const { getByTestId, getByText } = setup();
+    expect(getByTestId('slice-header')).toBeInTheDocument();
+    expect(getByText('Unexpected error')).toBeInTheDocument();
+  } finally {
+    shouldThrowInChartContainer = false;
+    (console.error as jest.Mock).mockRestore();
+  }
 });
