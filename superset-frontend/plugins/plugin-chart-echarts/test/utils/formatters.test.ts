@@ -201,9 +201,14 @@ test('getTooltipTimeFormatter returns a TimeFormatter for a custom format string
   expect((formatter as TimeFormatter).id).toBe(customFormat);
 });
 
-test('getTooltipTimeFormatter falls back to the String constructor when no format is supplied', () => {
-  expect(getTooltipTimeFormatter()).toBe(String);
-  expect(getTooltipTimeFormatter(undefined)).toBe(String);
+test('getTooltipTimeFormatter defaults to SMART_DATE_VERBOSE formatter when no format is supplied', () => {
+  const formatter = getTooltipTimeFormatter();
+  expect(formatter).toBeInstanceOf(TimeFormatter);
+  expect((formatter as TimeFormatter).id).toBe(SMART_DATE_VERBOSE_ID);
+
+  const formatterUndefined = getTooltipTimeFormatter(undefined);
+  expect(formatterUndefined).toBeInstanceOf(TimeFormatter);
+  expect((formatterUndefined as TimeFormatter).id).toBe(SMART_DATE_VERBOSE_ID);
 });
 
 test('getXAxisFormatter produces stable SMART_DATE output for a valid Date', () => {
