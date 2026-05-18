@@ -90,7 +90,10 @@ import {
   setUnsavedChanges,
 } from '../../actions/dashboardState';
 import { logEvent } from '../../../logger/actions';
-import { dashboardInfoChanged } from '../../actions/dashboardInfo';
+import {
+  dashboardInfoChanged,
+  saveRefreshFrequency,
+} from '../../actions/dashboardInfo';
 import { ChartState } from 'src/explore/types';
 import { useChartIds } from '../../util/charts/useChartIds';
 import { useDashboardMetadataBar } from './useDashboardMetadataBar';
@@ -580,8 +583,9 @@ const Header = (): JSX.Element => {
   const handleRefreshChange = useCallback(
     (refreshFrequency: number, editMode: boolean) => {
       boundActionCreators.setRefreshFrequency(refreshFrequency, !!editMode);
+      dispatch(saveRefreshFrequency(refreshFrequency));
     },
-    [boundActionCreators],
+    [boundActionCreators, dispatch],
   );
 
   const handleEnterEditMode = useCallback(() => {

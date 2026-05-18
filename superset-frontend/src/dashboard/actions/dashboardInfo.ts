@@ -153,6 +153,43 @@ export function saveFilterBarOrientation(orientation: FilterBarOrientation) {
   };
 }
 
+export function saveRefreshFrequency(refreshFrequency: number) {
+  return async function saveRefreshFrequencyThunk(
+    dispatch: Dispatch,
+    getState: () => RootState,
+  ) {
+    const { id, metadata } = getState().dashboardInfo;
+    const updateDashboard = createUpdateDashboardApi(id);
+
+    try {
+      const response = await updateDashboard({
+        json_metadata: JSON.stringify({
+          ...metadata,
+          refresh_frequency: refreshFrequency,
+        }),
+      });
+
+      const lastModifiedTime = response.last_modified_time;
+
+      dispatch(
+        dashboardInfoChanged({
+          metadata: JSON.parse(response.result.json_metadata || '{}'),
+        }),
+      );
+
+      if (lastModifiedTime) {
+        dispatch(onSave(lastModifiedTime));
+      }
+      return response;
+    } catch (err) {
+      dispatch(
+        addDangerToast(t('Failed to save refresh interval to dashboard')),
+      );
+      throw err;
+    }
+  };
+}
+
 export function saveCrossFiltersSetting(crossFiltersEnabled: boolean) {
   return async function saveCrossFiltersSettingThunk(
     dispatch: Dispatch,
