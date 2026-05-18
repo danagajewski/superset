@@ -17,7 +17,7 @@
  * under the License.
  */
 import { useEffect, useMemo, useRef } from 'react';
-import { useDispatch, useStore } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { t } from '@apache-superset/core/translation';
 import { getExtensionsRegistry } from '@superset-ui/core';
 
@@ -94,8 +94,10 @@ export function useKeywords(
     }
   }, [dispatch, isError]);
 
-  const store = useStore();
-  const apiState = store.getState()[api.reducerPath];
+  const apiState = useSelector(
+    (state: Record<string, { queries?: Record<string, unknown> }>) =>
+      state[api.reducerPath],
+  );
 
   // Normalize catalog for comparison (null/undefined both mean "no catalog")
   const normalizedCatalog = catalog ?? null;
