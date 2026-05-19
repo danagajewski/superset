@@ -121,6 +121,9 @@ const createFetchRequest = async (
   if ('client_id' in payload) {
     // SQL Lab export - pass client_id directly
     formParams.client_id = String(payload.client_id);
+    if ('row_limit' in payload && payload.row_limit != null) {
+      formParams.row_limit = String(payload.row_limit);
+    }
   } else {
     // Chart export - wrap payload in form_data
     formParams.form_data = JSON.stringify(payload);

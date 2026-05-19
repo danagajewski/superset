@@ -45,6 +45,7 @@ class StreamingSqlResultExportCommand(BaseStreamingCSVExportCommand):
         self,
         client_id: str,
         chunk_size: int = 1000,
+        row_limit: int | None = None,
     ):
         """
         Initialize the SQL Lab streaming export command.
@@ -52,9 +53,11 @@ class StreamingSqlResultExportCommand(BaseStreamingCSVExportCommand):
         Args:
             client_id: The SQL Lab query client ID
             chunk_size: Number of rows to fetch per database query (default: 1000)
+            row_limit: Optional row limit from the frontend query editor
         """
         super().__init__(chunk_size)
         self._client_id = client_id
+        self._frontend_row_limit = row_limit
         self._query: Query | None = None
 
     def validate(self) -> None:
@@ -138,5 +141,12 @@ class StreamingSqlResultExportCommand(BaseStreamingCSVExportCommand):
         }:
             # remove extra row from `increased_limit`
             limit -= 1
+
+        if self._frontend_row_limit is not None:
+            limit = (
+                min(limit, self._frontend_row_limit)
+                if limit is not None
+                else self._frontend_row_limit
+            )
 
         return limit

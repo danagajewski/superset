@@ -319,8 +319,10 @@ const ResultSet = ({
     }
   };
 
-  const getExportCsvUrl = (clientId: string) =>
-    makeUrl(`/api/v1/sqllab/export/${clientId}/`);
+  const getExportCsvUrl = (clientId: string, rowLimit?: number) => {
+    const params = rowLimit ? `?row_limit=${rowLimit}` : '';
+    return makeUrl(`/api/v1/sqllab/export/${clientId}/${params}`);
+  };
 
   const handleCloseStreamingModal = () => {
     cancelExport();
@@ -377,7 +379,7 @@ const ResultSet = ({
               { rows: rowsCount.toLocaleString() },
             ),
             onConfirm: () => {
-              window.location.href = getExportCsvUrl(query.id);
+              window.location.href = getExportCsvUrl(query.id, limit);
             },
             confirmText: t('OK'),
             cancelText: t('Close'),
@@ -408,7 +410,7 @@ const ResultSet = ({
               disabled={!canExportData}
               {...(canExportData &&
                 !shouldUseStreamingExport() && {
-                  href: getExportCsvUrl(query.id),
+                  href: getExportCsvUrl(query.id, limit),
                 })}
               data-test="export-csv-button"
               onClick={e => {
@@ -421,7 +423,7 @@ const ResultSet = ({
 
                   startExport({
                     url: makeUrl('/api/v1/sqllab/export_streaming/'),
-                    payload: { client_id: query.id },
+                    payload: { client_id: query.id, row_limit: limit },
                     exportType: 'csv',
                     expectedRows: rows,
                   });

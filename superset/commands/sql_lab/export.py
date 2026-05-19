@@ -49,8 +49,10 @@ class SqlResultExportCommand(BaseCommand):
     def __init__(
         self,
         client_id: str,
+        row_limit: int | None = None,
     ) -> None:
         self._client_id = client_id
+        self._row_limit = row_limit
 
     def validate(self) -> None:
         self._query = (
@@ -106,6 +108,9 @@ class SqlResultExportCommand(BaseCommand):
                 columns=[c["name"] for c in obj["columns"]],
             )
 
+            if self._row_limit is not None:
+                df = df.head(self._row_limit)
+
             logger.info("Using pandas to convert to CSV")
         else:
             logger.info("Running a query to turn into CSV")
@@ -124,6 +129,12 @@ class SqlResultExportCommand(BaseCommand):
             }:
                 # remove extra row from `increased_limit`
                 limit -= 1
+            if self._row_limit is not None:
+                limit = (
+                    min(limit, self._row_limit)
+                    if limit is not None
+                    else self._row_limit
+                )
             df = self._query.database.get_df(
                 sql,
                 self._query.catalog,
