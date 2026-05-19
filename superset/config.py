@@ -1108,6 +1108,11 @@ SCREENSHOT_TILED_HEIGHT_THRESHOLD = (
     5000  # Minimum height (px) to trigger tiled screenshots
 )
 SCREENSHOT_TILED_VIEWPORT_HEIGHT = 2000  # Height of each tile in pixels
+# Time in seconds to wait after all loading spinners disappear before taking
+# the screenshot. Guards against dashboards where charts load in waves: the
+# first batch finishes (spinners gone) but a second batch starts shortly after.
+# If new spinners appear during this window the wait restarts automatically.
+SCREENSHOT_WAIT_FOR_CHART_RENDER = 5
 
 # ---------------------------------------------------
 # Image and file configuration
@@ -1986,6 +1991,11 @@ ALERT_REPORTS_NOTIFICATION_DRY_RUN = False
 # Max tries to run queries to prevent false errors caused by transient errors
 # being returned to users. Set to a value >1 to enable retries.
 ALERT_REPORTS_QUERY_EXECUTION_MAX_TRIES = 1
+# Max retries for capturing a screenshot. Set to a value >1 to retry on
+# transient failures (e.g. loading spinners not yet cleared).
+ALERT_REPORTS_SCREENSHOT_MAX_RETRIES = 1
+# Delay in seconds between screenshot retry attempts.
+ALERT_REPORTS_SCREENSHOT_RETRY_DELAY = 5
 # Custom width for screenshots
 ALERT_REPORTS_MIN_CUSTOM_SCREENSHOT_WIDTH = 600
 ALERT_REPORTS_MAX_CUSTOM_SCREENSHOT_WIDTH = 2400

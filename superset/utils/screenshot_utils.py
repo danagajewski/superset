@@ -89,6 +89,7 @@ def take_tiled_screenshot(
     element_name: str,
     tile_height: int,
     load_wait: int = 60,
+    render_wait: int = 5,
 ) -> bytes | None:
     """
     Take a tiled screenshot of a large dashboard by scrolling and capturing sections.
@@ -148,21 +149,26 @@ def take_tiled_screenshot(
             )
             # Wait for scroll to settle and content to load
             page.wait_for_timeout(SCROLL_SETTLE_TIMEOUT_MS)
-            # Wait for any loading spinners visible in the current viewport to clear.
-            # Only check viewport-visible spinners to avoid blocking on
-            # virtualization placeholders rendered for off-screen charts.
+            # Wait for any loading spinners visible in the viewport to clear,
+            # then stabilize to ensure no new spinners appear.
+            js_viewport_spinners_gone = """() => {
+                const els = document.querySelectorAll('.loading');
+                for (const el of els) {
+                    const r = el.getBoundingClientRect();
+                    if (r.top < window.innerHeight && r.bottom > 0) {
+                        return false;
+                    }
+                }
+                return true;
+            }"""
             try:
                 page.wait_for_function(
-                    """() => {
-                        const els = document.querySelectorAll('.loading');
-                        for (const el of els) {
-                            const r = el.getBoundingClientRect();
-                            if (r.top < window.innerHeight && r.bottom > 0) {
-                                return false;
-                            }
-                        }
-                        return true;
-                    }""",
+                    js_viewport_spinners_gone,
+                    timeout=load_wait * 1000,
+                )
+                page.wait_for_timeout(render_wait * 1000)
+                page.wait_for_function(
+                    js_viewport_spinners_gone,
                     timeout=load_wait * 1000,
                 )
             except PlaywrightTimeout:
@@ -173,6 +179,7 @@ def take_tiled_screenshot(
                     num_tiles,
                     load_wait,
                 )
+                raise
 
             # Calculate what portion of the element we want to capture for this tile
             tile_start_in_element = i * tile_height
