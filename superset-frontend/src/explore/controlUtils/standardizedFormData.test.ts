@@ -421,9 +421,12 @@ describe('should transform form_data between table and bigNumberTotal', () => {
     const sfd = new StandardizedFormData(tableVizFormData);
     const { formData: bntFormData, controlsState: bntControlsState } =
       sfd.transform(VizType.BigNumberTotal, tableVizStore);
-    expect(Object.keys(bntFormData).sort()).toEqual(
-      [...Object.keys(bntControlsState), 'standardizedFormData'].sort(),
-    );
+    // form data contains all controls state keys, standardizedFormData,
+    // and any public controls preserved from the source viz
+    Object.keys(bntControlsState).forEach(key => {
+      expect(bntFormData).toHaveProperty(key);
+    });
+    expect(bntFormData).toHaveProperty('standardizedFormData');
     expect(bntFormData.viz_type).toBe(VizType.BigNumberTotal);
     expect(bntFormData.metric).toBe('count');
 
@@ -440,9 +443,10 @@ describe('should transform form_data between table and bigNumberTotal', () => {
         form_data: bntFormData,
         controls: bntControlsState,
       });
-    expect(Object.keys(tblFormData).sort()).toEqual(
-      [...Object.keys(tblControlsState), 'standardizedFormData'].sort(),
-    );
+    Object.keys(tblControlsState).forEach(key => {
+      expect(tblFormData).toHaveProperty(key);
+    });
+    expect(tblFormData).toHaveProperty('standardizedFormData');
     expect(tblFormData.viz_type).toBe(VizType.Table);
     expect(tblFormData.metrics).toEqual([
       'sum(sales)',
@@ -526,9 +530,120 @@ describe('should transform form_data between table and bigNumberTotal', () => {
       storeNullDashboard,
     );
 
-    // null is falsy, so dashboardId should not be added
-    expect(bntFormData.dashboardId).toBeUndefined();
+    // null dashboardId is preserved as-is via publicFormData spread
+    expect(bntFormData.dashboardId).toBeNull();
   });
+});
+
+test('preserves adhoc_filters when switching viz types', () => {
+  getChartControlPanelRegistry().registerValue(
+    VizType.BigNumberTotal,
+    new BigNumberTotalChartPlugin().controlPanel,
+  );
+  getChartControlPanelRegistry().registerValue(
+    'table',
+    new TableChartPlugin().controlPanel,
+  );
+
+  const filters = [
+    {
+      expressionType: 'SIMPLE' as const,
+      subject: 'gender',
+      operator: '==' as const,
+      comparator: 'boy',
+      clause: 'WHERE' as const,
+    },
+    {
+      expressionType: 'SQL' as const,
+      sqlExpression: "state = 'CA'",
+      clause: 'WHERE' as const,
+    },
+  ];
+
+  const formDataWithFilters = {
+    ...tableVizFormData,
+    adhoc_filters: filters,
+  };
+  const storeWithFilters = {
+    ...tableVizStore,
+    form_data: formDataWithFilters,
+    controls: {
+      ...tableVizStore.controls,
+      adhoc_filters: { value: filters },
+    },
+  };
+
+  // table -> bigNumberTotal: filters should persist
+  const sfd = new StandardizedFormData(formDataWithFilters);
+  const { formData: bntFormData } = sfd.transform(
+    VizType.BigNumberTotal,
+    storeWithFilters,
+  );
+  expect(bntFormData.adhoc_filters).toEqual(filters);
+
+  // bigNumberTotal -> table: filters should still persist
+  const sfd2 = new StandardizedFormData(bntFormData);
+  const { formData: tblFormData } = sfd2.transform('table', {
+    ...storeWithFilters,
+    form_data: bntFormData,
+  });
+  expect(tblFormData.adhoc_filters).toEqual(filters);
+});
+
+test('preserves all public controls when target viz lacks those controls', () => {
+  getChartControlPanelRegistry().registerValue(
+    VizType.BigNumberTotal,
+    new BigNumberTotalChartPlugin().controlPanel,
+  );
+  getChartControlPanelRegistry().registerValue(
+    'table',
+    new TableChartPlugin().controlPanel,
+  );
+
+  const formDataWithPublicControls = {
+    ...tableVizFormData,
+    adhoc_filters: [
+      {
+        expressionType: 'SIMPLE' as const,
+        subject: 'name',
+        operator: '!=' as const,
+        comparator: '',
+        clause: 'WHERE' as const,
+      },
+    ],
+    granularity_sqla: 'ds',
+    time_range: '2020 : 2021',
+    row_limit: 500,
+    order_desc: false,
+  };
+  const storeWithPublicControls = {
+    ...tableVizStore,
+    form_data: formDataWithPublicControls,
+    controls: {
+      ...tableVizStore.controls,
+      adhoc_filters: { value: formDataWithPublicControls.adhoc_filters },
+      granularity_sqla: { value: 'ds' },
+      time_range: { value: '2020 : 2021' },
+      row_limit: { value: 500 },
+      order_desc: { value: false },
+    },
+  };
+
+  // table -> bigNumberTotal
+  const sfd = new StandardizedFormData(formDataWithPublicControls);
+  const { formData: bntFormData } = sfd.transform(
+    VizType.BigNumberTotal,
+    storeWithPublicControls,
+  );
+
+  // All public controls should be preserved in the target form data
+  expect(bntFormData.adhoc_filters).toEqual(
+    formDataWithPublicControls.adhoc_filters,
+  );
+  expect(bntFormData.granularity_sqla).toBe('ds');
+  expect(bntFormData.time_range).toBe('2020 : 2021');
+  expect(bntFormData.row_limit).toBe(500);
+  expect(bntFormData.order_desc).toBe(false);
 });
 
 // eslint-disable-next-line no-restricted-globals -- TODO: Migrate from describe blocks
