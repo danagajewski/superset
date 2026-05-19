@@ -1606,3 +1606,81 @@ def test_get_df_payload_invalidates_cache_missing_applied_filter_columns():
     assert mock_cache.is_loaded is False, (
         "Cache should be inv when no applied_filter_columns and query has filters"
     )
+
+
+def test_query_cache_key_includes_column_names():
+    """
+    Test that query_cache_key passes sorted column_names to the cache key
+    computation, ensuring cache invalidation when dataset columns are renamed.
+    """
+    mock_query_context = MagicMock()
+    mock_datasource = MagicMock()
+    mock_datasource.uid = "test_uid"
+    mock_datasource.changed_on = None
+    mock_datasource.column_names = ["revenue", "cost"]
+    mock_datasource.get_extra_cache_keys.return_value = []
+
+    processor = QueryContextProcessor(mock_query_context)
+    processor._qc_datasource = mock_datasource
+
+    mock_query_obj = MagicMock()
+    mock_query_obj.to_dict.return_value = {}
+    mock_query_obj.cache_key.return_value = "cache_key_1"
+
+    mock_security = MagicMock()
+    mock_security.get_rls_cache_key = MagicMock(return_value=[])
+
+    with patch(
+        "superset.common.query_context_processor.security_manager",
+        mock_security,
+    ):
+        processor.query_cache_key(mock_query_obj)
+
+    mock_query_obj.cache_key.assert_called_once_with(
+        datasource="test_uid",
+        extra_cache_keys=[],
+        rls=[],
+        changed_on=None,
+        column_names=["cost", "revenue"],
+    )
+
+
+def test_query_cache_key_changes_when_column_renamed():
+    """
+    Test that renaming a dataset column produces a different cache key,
+    ensuring stale cached results are invalidated.
+    """
+    mock_query_context = MagicMock()
+    mock_datasource = MagicMock()
+    mock_datasource.uid = "test_uid"
+    mock_datasource.changed_on = None
+    mock_datasource.get_extra_cache_keys.return_value = []
+
+    processor = QueryContextProcessor(mock_query_context)
+    processor._qc_datasource = mock_datasource
+
+    mock_query_obj = MagicMock()
+    mock_query_obj.to_dict.return_value = {}
+
+    mock_security = MagicMock()
+    mock_security.get_rls_cache_key = MagicMock(return_value=[])
+
+    with patch(
+        "superset.common.query_context_processor.security_manager",
+        mock_security,
+    ):
+        # First call with original column names
+        mock_datasource.column_names = ["revenue", "cost"]
+        mock_query_obj.cache_key.return_value = "key_before"
+        processor.query_cache_key(mock_query_obj)
+
+        # Simulate column rename: "revenue" -> "total_revenue"
+        mock_datasource.column_names = ["total_revenue", "cost"]
+        mock_query_obj.cache_key.return_value = "key_after"
+        processor.query_cache_key(mock_query_obj)
+
+    # Verify column_names changed between calls
+    calls = mock_query_obj.cache_key.call_args_list
+    assert calls[0].kwargs["column_names"] == ["cost", "revenue"]
+    assert calls[1].kwargs["column_names"] == ["cost", "total_revenue"]
+    assert calls[0].kwargs["column_names"] != calls[1].kwargs["column_names"]
