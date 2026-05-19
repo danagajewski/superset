@@ -24,18 +24,19 @@ from flask_appbuilder.api import rison as parse_rison
 from flask_appbuilder.security.decorators import has_access_api
 from flask_babel import lazy_gettext as _
 
-from superset import db, event_logger
+from superset import db, event_logger, is_feature_enabled, security_manager
 from superset.commands.chart.exceptions import (
     TimeRangeAmbiguousError,
     TimeRangeParseFailError,
 )
+from superset.common.chart_data import ChartDataResultFormat
 from superset.legacy import update_time_range
 from superset.models.slice import Slice
 from superset.superset_typing import FlaskResponse
 from superset.utils import json
 from superset.utils.date_parser import get_since_until
 from superset.views.base import api, BaseSupersetView
-from superset.views.error_handling import handle_api_exception
+from superset.views.error_handling import handle_api_exception, json_error_response
 
 if TYPE_CHECKING:
     from superset.common.query_context_factory import QueryContextFactory
@@ -71,6 +72,21 @@ class Api(BaseSupersetView):
             **json.loads(request.form["query_context"])
         )
         query_context.raise_for_access()
+
+        # Enforce export permissions for table-like formats (CSV/XLSX)
+        if query_context.result_format in ChartDataResultFormat.table_like():
+            if is_feature_enabled("GRANULAR_EXPORT_CONTROLS"):
+                has_export_perm = security_manager.can_access(
+                    "can_export_data", "Superset"
+                )
+            else:
+                has_export_perm = security_manager.can_access("can_csv", "Superset")
+            if not has_export_perm:
+                return json_error_response(
+                    _("You don't have the rights to export data"),
+                    status=403,
+                )
+
         result = query_context.get_payload()
         payload_json = result["queries"]
         return json.dumps(payload_json, default=json.json_int_dttm_ser, ignore_nan=True)
