@@ -245,6 +245,68 @@ describe('dashboardState actions', () => {
         `/superset/dashboard/${newDashboardId}/`,
       );
     });
+
+    test('should preserve color metadata when duplicating via Save As', async () => {
+      const newDashboardId = 888;
+      const colorMetadata = {
+        color_scheme: 'bnbColors',
+        color_scheme_domain: ['#ff5a5f', '#484848', '#767676'],
+        label_colors: { Revenue: '#ff5a5f', Expenses: '#484848' },
+        shared_label_colors: ['Revenue', 'Expenses'],
+        map_label_colors: { Profit: '#767676' },
+      };
+
+      const { getState, dispatch } = setup({
+        dashboardState: { hasUnsavedChanges: true },
+        dashboardInfo: {
+          metadata: {
+            ...colorMetadata,
+          },
+        },
+      });
+
+      postStub.mockRestore();
+      postStub = jest.spyOn(SupersetClient, 'post').mockResolvedValue({
+        json: {
+          result: {
+            ...mockDashboardData,
+            id: newDashboardId,
+          },
+        },
+      } as any);
+
+      const dashboardDataWithMetadata = {
+        ...newDashboardData,
+        metadata: {
+          ...colorMetadata,
+          positions: mockDashboardData.positions,
+        },
+      };
+
+      const thunk = saveDashboardRequest(
+        dashboardDataWithMetadata,
+        1,
+        SAVE_TYPE_NEWDASHBOARD,
+      );
+      await thunk(dispatch, getState);
+
+      await waitFor(() => expect(postStub.mock.calls.length).toBe(1));
+      const postCall = postStub.mock.calls[0][0];
+      const sentMetadata = JSON.parse(postCall.jsonPayload.json_metadata);
+
+      expect(sentMetadata.color_scheme).toBe('bnbColors');
+      expect(sentMetadata.color_scheme_domain).toEqual([
+        '#ff5a5f',
+        '#484848',
+        '#767676',
+      ]);
+      expect(sentMetadata.label_colors).toEqual({
+        Revenue: '#ff5a5f',
+        Expenses: '#484848',
+      });
+      expect(sentMetadata.shared_label_colors).toEqual(['Revenue', 'Expenses']);
+      expect(sentMetadata.map_label_colors).toEqual({ Profit: '#767676' });
+    });
   });
 
   test('fetchCharts returns a Promise that resolves after all refreshes', async () => {
