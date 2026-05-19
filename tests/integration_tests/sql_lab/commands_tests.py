@@ -282,7 +282,6 @@ class TestSqlResultExportCommand(SupersetTestCase):
         assert result["count"] == 2
         assert result["query"].client_id == "test"
 
-
 class TestSqlExecutionResultsCommand(SupersetTestCase):
     @pytest.fixture
     def create_database_and_query(self):
