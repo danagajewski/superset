@@ -17,15 +17,16 @@
 # pylint: disable=consider-using-transaction
 import logging
 
-from flask import request, Response
+from flask import abort, request, Response
 from flask_appbuilder import expose
-from flask_appbuilder.security.decorators import has_access, has_access_api
+from flask_appbuilder.security.decorators import has_access_api
 from flask_babel import gettext as __
 from sqlalchemy import and_
 
-from superset import db
+from superset import db, security_manager
 from superset.models.sql_lab import Query, TableSchema, TabState
 from superset.superset_typing import FlaskResponse
+from superset.tasks.utils import get_current_user
 from superset.utils import json
 from superset.utils.core import error_msg_from_exception, get_user_id
 from superset.views.base import (
@@ -33,6 +34,7 @@ from superset.views.base import (
     json_error_response,
     json_success,
 )
+from superset.views.utils import redirect_to_login
 
 logger = logging.getLogger(__name__)
 
@@ -42,8 +44,11 @@ class SavedQueryView(BaseSupersetView):
     class_permission_name = "SavedQuery"
 
     @expose("/list/")
-    @has_access
     def list(self) -> FlaskResponse:
+        if not get_current_user():
+            return redirect_to_login()
+        if not security_manager.can_access("can_read", "SavedQuery"):
+            abort(403, description=__("You do not have permission to view this query"))
         return super().render_app_template()
 
 
