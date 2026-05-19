@@ -302,10 +302,14 @@ const baseAggregatorTemplates = {
           sum: 0 as any,
           currencySet: new Set<string>(),
           push(record: PivotRecord) {
-            if (Number.isNaN(Number(record[attr]))) {
-              this.sum = record[attr];
+            const val = record[attr];
+            if (val == null) {
+              return;
+            }
+            if (Number.isNaN(Number(val))) {
+              this.sum = val;
             } else {
-              this.sum += parseFloat(String(record[attr]));
+              this.sum += parseFloat(String(val));
             }
             if (
               record.__currencyColumn &&
