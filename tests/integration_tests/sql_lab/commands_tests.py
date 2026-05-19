@@ -246,6 +246,42 @@ class TestSqlResultExportCommand(SupersetTestCase):
         assert result["count"] == 5
         assert result["query"].client_id == "test"
 
+    @pytest.mark.usefixtures("create_database_and_query")
+    @patch("superset.models.sql_lab.Query.raise_for_access", lambda _: None)
+    @patch("superset.commands.sql_lab.export.results_backend_use_msgpack", False)
+    def test_run_with_row_limit_results_backend(self) -> None:
+        command = export.SqlResultExportCommand("test", row_limit=3)
+
+        data = [{"foo": i} for i in range(5)]
+        payload = {
+            "columns": [{"name": "foo"}],
+            "data": data,
+        }
+        serialized_payload = sql_lab._serialize_payload(payload, False)
+        compressed = utils.zlib_compress(serialized_payload)
+
+        export.results_backend = mock.Mock()
+        export.results_backend.get.return_value = compressed
+
+        result = command.run()
+
+        assert result["data"] == b"\xef\xbb\xbffoo\n0\n1\n2\n"
+        assert result["count"] == 3
+        assert result["query"].client_id == "test"
+
+    @pytest.mark.usefixtures("create_database_and_query")
+    @patch("superset.models.sql_lab.Query.raise_for_access", lambda _: None)
+    @patch("superset.models.core.Database.get_df")
+    def test_run_with_row_limit_no_results_backend(self, get_df_mock: Mock) -> None:
+        command = export.SqlResultExportCommand("test", row_limit=2)
+
+        get_df_mock.return_value = pd.DataFrame({"foo": [1, 2, 3]})
+        result = command.run()
+
+        assert result["data"] == b"\xef\xbb\xbffoo\n1\n2\n"
+        assert result["count"] == 2
+        assert result["query"].client_id == "test"
+
 
 class TestSqlExecutionResultsCommand(SupersetTestCase):
     @pytest.fixture
