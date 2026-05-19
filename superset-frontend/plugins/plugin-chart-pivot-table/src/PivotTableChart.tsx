@@ -352,7 +352,7 @@ export default function PivotTableChart(props: PivotTableProps) {
               // Mark currency column for per-cell currency detection in aggregators
               __currencyColumn: currencyCodeColumn,
             }))
-            .filter(record => record.value !== null),
+            .filter(record => record.value != null),
         ],
         [],
       ),
