@@ -16,14 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { ChangeEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { shallowEqual, useSelector } from 'react-redux';
 import { useInView } from 'react-intersection-observer';
 import { omit } from 'lodash';
-import { EmptyState, Skeleton } from '@superset-ui/core/components';
+import { EmptyState, Input, Skeleton } from '@superset-ui/core/components';
 import { t } from '@apache-superset/core/translation';
 import { FeatureFlag, isFeatureEnabled } from '@superset-ui/core';
-import { styled, css } from '@apache-superset/core/theme';
+import { css, styled } from '@apache-superset/core/theme';
+import { QueryResponse } from '@superset-ui/core';
 import QueryTable from 'src/SqlLab/components/QueryTable';
 import { SqlLabRootState } from 'src/SqlLab/types';
 import { useEditorQueriesQuery } from 'src/hooks/apiResources/queries';
@@ -49,6 +50,31 @@ const StyledEmptyStateWrapper = styled.div`
   }
 `;
 
+const TABLE_NAME_REGEX =
+  /\b(?:FROM|JOIN|INTO|UPDATE|TABLE)\s+(?:[\w.]+\.)?[`"']?([\w]+)[`"']?/gi;
+
+function extractTableNames(sql: string): string[] {
+  const names: string[] = [];
+  TABLE_NAME_REGEX.lastIndex = 0;
+  let match: RegExpExecArray | null;
+  // eslint-disable-next-line no-cond-assign
+  while ((match = TABLE_NAME_REGEX.exec(sql)) !== null) {
+    names.push(match[1].toLowerCase());
+  }
+  return names;
+}
+
+function queryMatchesSearch(
+  query: QueryResponse,
+  lowerSearch: string,
+): boolean {
+  if (query.sql?.toLowerCase().includes(lowerSearch)) {
+    return true;
+  }
+  const tableNames = extractTableNames(query.sql || '');
+  return tableNames.some(name => name.includes(lowerSearch));
+}
+
 const getEditorQueries = (
   queries: SqlLabRootState['sqlLab']['queries'],
   queryEditorId: string | number,
@@ -68,6 +94,11 @@ const QueryHistory = ({
   const editorId = tabViewId ?? id;
   const [ref, hasReachedBottom] = useInView({ threshold: 0 });
   const [pageIndex, setPageIndex] = useState(0);
+  const [searchText, setSearchText] = useState('');
+  const handleSearchChange = useCallback(
+    (e: ChangeEvent<HTMLInputElement>) => setSearchText(e.target.value),
+    [],
+  );
   const queries = useSelector(
     ({ sqlLab: { queries } }: SqlLabRootState) => queries,
     shallowEqual,
@@ -102,6 +133,14 @@ const QueryHistory = ({
     [queries, data, editorId],
   );
 
+  const filteredQueries = useMemo(() => {
+    const trimmed = searchText.trim().toLowerCase();
+    if (!trimmed) {
+      return editorQueries;
+    }
+    return editorQueries.filter(q => queryMatchesSearch(q, trimmed));
+  }, [editorQueries, searchText]);
+
   const loadNext = useEffectEvent(() => {
     setPageIndex(pageIndex + 1);
   });
@@ -122,6 +161,16 @@ const QueryHistory = ({
   return editorQueries.length > 0 ? (
     <>
       <PanelToolbar viewId={ViewLocations.sqllab.queryHistory} />
+      <Input
+        css={css`
+          width: 200px;
+          margin-bottom: 4px;
+        `}
+        placeholder={t('Search query history')}
+        onChange={handleSearchChange}
+        value={searchText}
+        allowClear
+      />
       <QueryTable
         columns={[
           'state',
@@ -133,7 +182,7 @@ const QueryHistory = ({
           'results',
           'actions',
         ]}
-        queries={editorQueries}
+        queries={filteredQueries}
         displayLimit={displayLimit}
         latestQueryId={latestQueryId}
       />

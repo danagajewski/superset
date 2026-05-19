@@ -18,7 +18,12 @@
  */
 import fetchMock from 'fetch-mock';
 import { FeatureFlag, isFeatureEnabled, QueryState } from '@superset-ui/core';
-import { render, screen, waitFor } from 'spec/helpers/testing-library';
+import {
+  render,
+  screen,
+  userEvent,
+  waitFor,
+} from 'spec/helpers/testing-library';
 import QueryHistory from 'src/SqlLab/components/QueryHistory';
 import {
   initialState,
@@ -291,4 +296,114 @@ test('renders contributed toolbar action in queryHistory slot', () => {
   expect(
     screen.getByRole('button', { name: 'History Action' }),
   ).toBeInTheDocument();
+});
+
+test('search filters queries by partial table name', async () => {
+  const stateWithQueries = {
+    ...initialState,
+    sqlLab: {
+      ...initialState.sqlLab,
+      queries: {
+        q1: {
+          id: 'q1',
+          sqlEditorId: defaultQueryEditor.id,
+          sql: 'SELECT * FROM customer_orders',
+          state: QueryState.Success,
+          startDttm: Date.now(),
+          endDttm: Date.now() + 100,
+          progress: 100,
+          rows: 10,
+          cached: false,
+          changed_on: new Date().toISOString(),
+          db: 'main',
+          dbId: 1,
+        },
+        q2: {
+          id: 'q2',
+          sqlEditorId: defaultQueryEditor.id,
+          sql: 'SELECT * FROM orders_archive',
+          state: QueryState.Success,
+          startDttm: Date.now() + 200,
+          endDttm: Date.now() + 300,
+          progress: 100,
+          rows: 5,
+          cached: false,
+          changed_on: new Date().toISOString(),
+          db: 'main',
+          dbId: 1,
+        },
+        q3: {
+          id: 'q3',
+          sqlEditorId: defaultQueryEditor.id,
+          sql: 'SELECT * FROM users',
+          state: QueryState.Success,
+          startDttm: Date.now() + 400,
+          endDttm: Date.now() + 500,
+          progress: 100,
+          rows: 20,
+          cached: false,
+          changed_on: new Date().toISOString(),
+          db: 'main',
+          dbId: 1,
+        },
+      },
+    },
+  };
+
+  render(setup(), { useRedux: true, initialState: stateWithQueries });
+
+  const searchInput = screen.getByPlaceholderText('Search query history');
+  expect(searchInput).toBeInTheDocument();
+
+  await userEvent.type(searchInput, 'orders');
+
+  await waitFor(() => {
+    expect(screen.getByText('10')).toBeInTheDocument();
+    expect(screen.getByText('5')).toBeInTheDocument();
+    expect(screen.queryByText('20')).not.toBeInTheDocument();
+  });
+});
+
+test('search with empty input shows all queries', () => {
+  const stateWithQueries = {
+    ...initialState,
+    sqlLab: {
+      ...initialState.sqlLab,
+      queries: {
+        q1: {
+          id: 'q1',
+          sqlEditorId: defaultQueryEditor.id,
+          sql: 'SELECT * FROM orders',
+          state: QueryState.Success,
+          startDttm: Date.now(),
+          endDttm: Date.now() + 100,
+          progress: 100,
+          rows: 10,
+          cached: false,
+          changed_on: new Date().toISOString(),
+          db: 'main',
+          dbId: 1,
+        },
+        q2: {
+          id: 'q2',
+          sqlEditorId: defaultQueryEditor.id,
+          sql: 'SELECT * FROM users',
+          state: QueryState.Success,
+          startDttm: Date.now() + 200,
+          endDttm: Date.now() + 300,
+          progress: 100,
+          rows: 20,
+          cached: false,
+          changed_on: new Date().toISOString(),
+          db: 'main',
+          dbId: 1,
+        },
+      },
+    },
+  };
+
+  render(setup(), { useRedux: true, initialState: stateWithQueries });
+
+  expect(screen.getByText('10')).toBeInTheDocument();
+  expect(screen.getByText('20')).toBeInTheDocument();
 });
