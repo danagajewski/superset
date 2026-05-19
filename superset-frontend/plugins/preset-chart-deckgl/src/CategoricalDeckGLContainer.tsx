@@ -130,7 +130,9 @@ const CategoricalDeckGLContainer = (props: CategoricalDeckGLContainerProps) => {
       const features = props.payload.data.features || [];
       const categories = getCategories(props.formData, features);
 
-      setViewport(getAdjustedViewport());
+      if (props.formData.autozoom) {
+        setViewport(getAdjustedViewport());
+      }
       setStateFormData(props.payload.form_data);
       setCategories(categories);
     }
