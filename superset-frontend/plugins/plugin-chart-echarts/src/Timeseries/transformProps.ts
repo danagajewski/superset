@@ -623,6 +623,7 @@ export default function transformProps(
             theme,
             sliceId,
             orientation,
+            refs,
           ),
         );
       } else if (isEventAnnotationLayer(layer)) {
@@ -635,6 +636,7 @@ export default function transformProps(
             theme,
             sliceId,
             orientation,
+            refs,
           ),
         );
       } else if (isTimeseriesAnnotationLayer(layer)) {

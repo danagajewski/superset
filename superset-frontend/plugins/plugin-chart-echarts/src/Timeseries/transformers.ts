@@ -53,6 +53,7 @@ import {
   ForecastSeriesEnum,
   LegendOrientation,
   OrientationType,
+  Refs,
   StackType,
 } from '../types';
 
@@ -60,6 +61,7 @@ import {
   evalFormula,
   extractRecordAnnotations,
   formatAnnotationLabel,
+  getAnnotationTooltipOptions,
   parseAnnotationOpacity,
 } from '../utils/annotation';
 import { getChartPadding, getTimeCompareStackId } from '../utils/series';
@@ -497,6 +499,7 @@ export function transformIntervalAnnotation(
   theme: SupersetTheme,
   sliceId?: number,
   orientation?: OrientationType,
+  refs?: Refs,
 ): SeriesOption[] {
   const series: SeriesOption[] = [];
   const annotations = extractRecordAnnotations(layer, annotationData);
@@ -576,6 +579,7 @@ export function transformIntervalAnnotation(
       } as ItemStyleOption,
       label: intervalLabel,
       data: allIntervalData,
+      tooltip: refs ? getAnnotationTooltipOptions(refs) : undefined,
     },
   });
 
@@ -590,6 +594,7 @@ export function transformEventAnnotation(
   theme: SupersetTheme,
   sliceId?: number,
   orientation?: OrientationType,
+  refs?: Refs,
 ): SeriesOption[] {
   const series: SeriesOption[] = [];
   const annotations = extractRecordAnnotations(layer, annotationData);
@@ -666,6 +671,7 @@ export function transformEventAnnotation(
       lineStyle,
       label: eventLabel,
       data: allEventData,
+      tooltip: refs ? getAnnotationTooltipOptions(refs) : undefined,
     },
   });
 

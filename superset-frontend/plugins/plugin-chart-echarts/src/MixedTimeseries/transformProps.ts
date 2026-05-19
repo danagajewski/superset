@@ -389,6 +389,8 @@ export default function transformProps(
             colorScale,
             theme,
             sliceId,
+            undefined,
+            refs,
           ),
         );
       } else if (isEventAnnotationLayer(layer)) {
@@ -400,6 +402,8 @@ export default function transformProps(
             colorScale,
             theme,
             sliceId,
+            undefined,
+            refs,
           ),
         );
       } else if (isTimeseriesAnnotationLayer(layer)) {

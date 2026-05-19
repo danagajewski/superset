@@ -31,8 +31,9 @@ import {
   FormulaAnnotationLayer,
   isTableAnnotationLayer,
 } from '@superset-ui/core';
-import { EchartsTimeseriesChartProps } from '../types';
+import { EchartsTimeseriesChartProps, Refs } from '../types';
 import { EchartsMixedTimeseriesProps } from '../MixedTimeseries/types';
+import { TOOLTIP_OVERFLOW_MARGIN, TOOLTIP_POINTER_MARGIN } from '../constants';
 
 export function evalFormula(
   formula: FormulaAnnotationLayer,
@@ -137,4 +138,41 @@ export function getAnnotationData(
     return data;
   }
   return {};
+}
+
+export function getAnnotationTooltipOptions(refs: Refs) {
+  return {
+    confine: true,
+    position: (
+      canvasMousePos: [number, number],
+      params: unknown,
+      tooltipDom: HTMLDivElement | null,
+      rect: unknown,
+      sizes: { contentSize: [number, number]; viewSize: [number, number] },
+    ) => {
+      const containerWidth = sizes.viewSize[0];
+      const containerHeight = sizes.viewSize[1];
+      const tooltipWidth = sizes.contentSize[0];
+      const tooltipHeight = sizes.contentSize[1];
+
+      let xPos = canvasMousePos[0] + TOOLTIP_POINTER_MARGIN;
+      let yPos = canvasMousePos[1] - TOOLTIP_POINTER_MARGIN - tooltipHeight;
+
+      if (xPos + tooltipWidth >= containerWidth) {
+        xPos = canvasMousePos[0] - TOOLTIP_POINTER_MARGIN - tooltipWidth;
+        if (xPos <= 0) {
+          xPos = TOOLTIP_OVERFLOW_MARGIN;
+        }
+      }
+
+      if (yPos <= 0) {
+        yPos = canvasMousePos[1] + TOOLTIP_POINTER_MARGIN;
+        if (yPos + tooltipHeight >= containerHeight) {
+          yPos = TOOLTIP_OVERFLOW_MARGIN;
+        }
+      }
+
+      return [xPos, yPos];
+    },
+  };
 }
