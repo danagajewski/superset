@@ -314,17 +314,28 @@ export const getColorFormatters = memoizeOne(
                   config?.targetValueRight !== undefined
                 : config?.targetValue !== undefined)))
         ) {
+          const isPercent = config.column.startsWith('%');
+          const columnValues = data.map(row => {
+            const val = row[config.column!] as number;
+            return isPercent && typeof val === 'number' ? val * 100 : val;
+          });
+          const colorFn = getColorFunction(
+            { ...config, colorScheme: resolvedColorScheme },
+            columnValues,
+            alpha,
+          );
           acc.push({
             column: config?.column,
             toAllRow: config?.toAllRow,
             toTextColor: config?.toTextColor,
             columnFormatting: config?.columnFormatting,
             objectFormatting: config?.objectFormatting,
-            getColorFromValue: getColorFunction(
-              { ...config, colorScheme: resolvedColorScheme },
-              data.map(row => row[config.column!] as number),
-              alpha,
-            ),
+            getColorFromValue: isPercent
+              ? (value: number | string | boolean | null) =>
+                  colorFn(
+                    typeof value === 'number' ? value * 100 : value,
+                  )
+              : colorFn,
           });
         }
         return acc;
