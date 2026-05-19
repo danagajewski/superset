@@ -218,10 +218,7 @@ export class StandardizedFormData {
     const targetFormData = {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ...getFormDataFromControls(targetControlsState as any),
-      // Preserve dashboard context when switching viz types.
-      ...(publicFormData.dashboardId && {
-        dashboardId: publicFormData.dashboardId,
-      }),
+      ...publicFormData,
       standardizedFormData: this.serialize(),
     };
 
@@ -235,6 +232,7 @@ export class StandardizedFormData {
       getStandardizedControls().setStandardizedControls(targetFormData);
       const transformed = {
         ...controlPanel.formDataOverrides(targetFormData),
+        ...publicFormData,
         standardizedFormData: {
           controls: { ...getStandardizedControls().controls },
           memorizedFormData: this.memorizedFormData,

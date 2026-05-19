@@ -16,15 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { t } from '@apache-superset/core/translation';
-import { getChartMetadataRegistry } from '@superset-ui/core';
+import { AdhocFilter, getChartMetadataRegistry } from '@superset-ui/core';
 import { css, styled, SupersetTheme } from '@apache-superset/core/theme';
 import { usePluginContext } from 'src/components';
 import { Icons, Modal } from '@superset-ui/core/components';
 import { noOp } from 'src/utils/common';
 import getBootstrapData from 'src/utils/getBootstrapData';
 import { FilterPlugins } from 'src/constants';
+import { ExplorePageState } from 'src/explore/types';
+import { setControlValue } from 'src/explore/actions/exploreActions';
 import VizTypeGallery, {
   MAX_ADVISABLE_VIZ_GALLERY_WIDTH,
 } from './VizTypeGallery';
@@ -75,14 +78,34 @@ const VizTypeControl = ({
   const [modalKey, setModalKey] = useState(0);
   const [selectedViz, setSelectedViz] = useState<string | null>(initialValue);
 
+  const dispatch = useDispatch();
+  const adhocFilters = useSelector(
+    (state: ExplorePageState) => state.explore?.form_data?.adhoc_filters,
+  );
+  const adhocFiltersRef = useRef<AdhocFilter[] | null | undefined>(
+    adhocFilters,
+  );
+  adhocFiltersRef.current = adhocFilters;
+
+  const handleVizTypeChange = useCallback(
+    (vizType: string | null) => {
+      const currentFilters = adhocFiltersRef.current;
+      onChange(vizType);
+      if (currentFilters?.length) {
+        dispatch(setControlValue('adhoc_filters', currentFilters));
+      }
+    },
+    [onChange, dispatch],
+  );
+
   const openModal = useCallback(() => {
     setShowModal(true);
   }, []);
 
   const onSubmit = useCallback(() => {
-    onChange(selectedViz);
+    handleVizTypeChange(selectedViz);
     setShowModal(false);
-  }, [selectedViz, onChange]);
+  }, [selectedViz, handleVizTypeChange]);
 
   const onCancel = useCallback(() => {
     setShowModal(false);
@@ -99,7 +122,10 @@ const VizTypeControl = ({
           max-width: fit-content;
         `}
       >
-        <FastVizSwitcher onChange={onChange} currentSelection={initialValue} />
+        <FastVizSwitcher
+          onChange={handleVizTypeChange}
+          currentSelection={initialValue}
+        />
         {initialValue && <VizSupportValidation vizType={initialValue} />}
       </div>
       <div
