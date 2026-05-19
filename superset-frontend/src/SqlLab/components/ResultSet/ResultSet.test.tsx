@@ -498,7 +498,9 @@ describe('ResultSet', () => {
       expect(export_csv_button).toHaveAttribute(
         'href',
         expect.stringMatching(
-          new RegExp(`^${app_root}/api/v1/sqllab/export/[a-zA-Z0-9]+/$`),
+          new RegExp(
+            `^${app_root}/api/v1/sqllab/export/[a-zA-Z0-9]+/\\?row_limit=\\d+$`,
+          ),
         ),
       );
     },
@@ -688,15 +690,64 @@ describe('ResultSet', () => {
 
     const exportButton = getByTestId('export-csv-button');
 
-    // Non-streaming export should have href attribute with prefixed URL
+    // Non-streaming export should have href attribute with prefixed URL and row_limit
     expect(exportButton).toHaveAttribute(
       'href',
-      expect.stringMatching(new RegExp(`^${appRoot}/api/v1/sqllab/export/`)),
+      expect.stringMatching(
+        new RegExp(
+          `^${appRoot}/api/v1/sqllab/export/[a-zA-Z0-9]+/\\?row_limit=\\d+$`,
+        ),
+      ),
     );
 
     // Click should NOT trigger startExport for non-streaming
     fireEvent.click(exportButton);
     expect(mockStartExport).not.toHaveBeenCalled();
+  });
+
+  test('non-streaming export URL should include row_limit matching queryLimit', async () => {
+    applicationRootMock.mockReturnValue('');
+    const queryLimit = 250;
+    const queryWithLimit = {
+      ...queries[0],
+      rows: 50,
+      queryLimit,
+      limitingFactor: 'DROPDOWN',
+    };
+
+    const { getByTestId } = setup(
+      { ...mockedProps, queryId: queryWithLimit.id },
+      mockStore({
+        ...initialState,
+        user: {
+          ...user,
+          roles: {
+            sql_lab: [['can_export_csv', 'SQLLab']],
+          },
+        },
+        sqlLab: {
+          ...initialState.sqlLab,
+          queries: {
+            [queryWithLimit.id]: queryWithLimit,
+          },
+        },
+        common: {
+          conf: {
+            CSV_STREAMING_ROW_THRESHOLD: 1000,
+          },
+        },
+      }),
+    );
+
+    await waitFor(() => {
+      expect(getByTestId('export-csv-button')).toBeInTheDocument();
+    });
+
+    const exportButton = getByTestId('export-csv-button');
+    expect(exportButton).toHaveAttribute(
+      'href',
+      expect.stringContaining(`?row_limit=${queryLimit}`),
+    );
   });
 
   test.each([
@@ -763,10 +814,13 @@ describe('ResultSet', () => {
       // Verify startExport was called exactly once
       expect(mockStartExport).toHaveBeenCalledTimes(1);
 
-      // The URL should match the expected prefixed URL
+      // The URL and row_limit should match the expected values
       expect(mockStartExport).toHaveBeenCalledWith(
         expect.objectContaining({
           url: expectedUrl,
+          payload: expect.objectContaining({
+            row_limit: queries[0].queryLimit,
+          }),
         }),
       );
     },
