@@ -59,7 +59,7 @@ ALLOWED_TAGS = {
     "ul",
 }.union(TABLE_TAGS)
 
-ALLOWED_TABLE_ATTRIBUTES = {tag: TABLE_ATTRIBUTES for tag in TABLE_TAGS}
+ALLOWED_TABLE_ATTRIBUTES = dict.fromkeys(TABLE_TAGS, TABLE_ATTRIBUTES)
 ALLOWED_ATTRIBUTES = {
     "a": {"href", "title"},
     "abbr": {"title"},
@@ -100,15 +100,21 @@ class EmailNotification(BaseNotification):  # pylint: disable=too-few-public-met
 
     def _error_template(self, text: str) -> str:
         call_to_action = self._get_call_to_action()
-        return __(
-            """
-            <p>Your report/alert was unable to be generated because of the following error: %(text)s</p>
-            <p>Please check your dashboard/chart for errors.</p>
-            <p><b><a href="%(url)s">%(call_to_action)s</a></b></p>
-            """,  # noqa: E501
-            text=text,
-            url=self._content.url,
-            call_to_action=call_to_action,
+        return textwrap.dedent(
+            __(
+                """
+                <html>
+                  <body>
+                    <p>Your report/alert was unable to be generated because of the following error: %(text)s</p>
+                    <p>Please check your dashboard/chart for errors.</p>
+                    <p><b><a href="%(url)s">%(call_to_action)s</a></b></p>
+                  </body>
+                </html>
+                """,  # noqa: E501
+                text=text,
+                url=self._content.url,
+                call_to_action=call_to_action,
+            )
         )
 
     def _get_content(self) -> EmailContent:
@@ -251,7 +257,7 @@ class EmailNotification(BaseNotification):  # pylint: disable=too-few-public-met
                 data=content.data,
                 pdf=content.pdf,
                 images=content.images,
-                mime_subtype="related",
+                mime_subtype="related" if content.images else "mixed",
                 dryrun=False,
                 cc=cc,
                 bcc=bcc,
