@@ -290,6 +290,11 @@ class SqlLabRestApi(BaseSupersetApi):
               type: integer
             name: client_id
             description: The SQL query result identifier
+          - in: query
+            schema:
+              type: integer
+            name: row_limit
+            description: Optional row limit from the query editor
           responses:
             200:
               description: SQL query results
@@ -312,7 +317,8 @@ class SqlLabRestApi(BaseSupersetApi):
             "GRANULAR_EXPORT_CONTROLS"
         ) and not security_manager.can_access("can_export_data", "Superset"):
             return self.response_403()
-        result = SqlResultExportCommand(client_id=client_id).run()
+        row_limit = request.args.get("row_limit", None, type=int)
+        result = SqlResultExportCommand(client_id=client_id, row_limit=row_limit).run()
 
         query, data, row_count = result["query"], result["data"], result["count"]
 
@@ -368,6 +374,9 @@ class SqlLabRestApi(BaseSupersetApi):
                     expected_rows:
                       type: integer
                       description: Optional expected row count for progress tracking
+                    row_limit:
+                      type: integer
+                      description: Optional row limit from the query editor
           responses:
             200:
               description: Streaming CSV export
@@ -404,19 +413,31 @@ class SqlLabRestApi(BaseSupersetApi):
             except (ValueError, TypeError):
                 logger.warning("Invalid expected_rows value: %s", expected_rows_str)
 
-        return self._create_streaming_csv_response(client_id, filename, expected_rows)
+        row_limit = None
+        if row_limit_str := request.form.get("row_limit"):
+            try:
+                row_limit = int(row_limit_str)
+            except (ValueError, TypeError):
+                logger.warning("Invalid row_limit value: %s", row_limit_str)
+
+        return self._create_streaming_csv_response(
+            client_id, filename, expected_rows, row_limit
+        )
 
     def _create_streaming_csv_response(
         self,
         client_id: str,
         filename: str | None = None,
         expected_rows: int | None = None,
+        row_limit: int | None = None,
     ) -> Response:
         """Create a streaming CSV response for large SQL Lab result sets."""
         # Execute streaming command
         # TODO: Make chunk size configurable via SUPERSET_CONFIG
         chunk_size = 1024
-        command = StreamingSqlResultExportCommand(client_id, chunk_size)
+        command = StreamingSqlResultExportCommand(
+            client_id, chunk_size, row_limit=row_limit
+        )
         command.validate()
 
         if not filename:
