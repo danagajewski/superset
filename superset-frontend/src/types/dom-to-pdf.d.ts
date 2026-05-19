@@ -17,20 +17,21 @@
  * under the License.
  */
 declare module 'dom-to-pdf' {
-  interface Image {
-    type: string;
-    quality: number;
-  }
-
   interface Options {
-    margin: number;
-    filename: string;
-    image: Image;
-    html2canvas: object;
+    filename?: string;
     excludeClassNames?: string[];
+    excludeTagNames?: string[];
+    overrideWidth?: number;
+    proxyUrl?: string;
+    compression?: string;
+    scale?: number;
   }
 
-  function domToPdf(elementToPrint: Element, options?: Options): Promise<any>;
+  function domToPdf(
+    elementToPrint: Element,
+    options?: Options,
+    cb?: (pdf: unknown) => void,
+  ): Promise<void>;
 
   export default domToPdf;
 }
