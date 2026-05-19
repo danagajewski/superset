@@ -332,7 +332,8 @@ const ResultSet = ({
 
   const shouldUseStreamingExport = () => {
     const { rows, queryLimit, limitingFactor } = query;
-    const limit = queryLimit || query.results?.query?.limit;
+    const limit =
+      queryLimit ?? query.results?.query?.limit ?? defaultQueryLimit;
     const rowsCount = Math.min(rows || 0, query.results?.data?.length || 0);
 
     let actualRowCount = rowsCount;
@@ -349,7 +350,7 @@ const ResultSet = ({
   const renderControls = () => {
     if (search || visualize || csv) {
       const { limitingFactor, queryLimit, results, rows } = query;
-      const limit = queryLimit || results.query.limit;
+      const limit = queryLimit ?? results?.query?.limit ?? defaultQueryLimit;
       const rowsCount = Math.min(rows || 0, results?.data?.length || 0);
       let { data } = query.results;
       if (cache && query.cached) {
@@ -494,7 +495,7 @@ const ResultSet = ({
     const { results, rows, queryLimit, limitingFactor } = query;
     let limitMessage = '';
     const limitReached = results?.displayLimitReached;
-    const limit = queryLimit || results.query.limit;
+    const limit = queryLimit ?? results?.query?.limit ?? defaultQueryLimit;
     const shouldUseDefaultDropdownAlert =
       limit === defaultQueryLimit && limitingFactor === LimitingFactor.Dropdown;
 
