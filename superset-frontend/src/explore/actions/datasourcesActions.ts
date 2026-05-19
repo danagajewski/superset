@@ -22,6 +22,7 @@ import { ThunkDispatch } from 'redux-thunk';
 import { Dataset } from '@superset-ui/chart-controls';
 import { SupersetClient, getClientErrorObject } from '@superset-ui/core';
 import { addDangerToast } from 'src/components/MessageToasts/actions';
+import { triggerQuery } from 'src/components/Chart/chartAction';
 import { updateFormDataByDatasource } from './exploreActions';
 import { ExplorePageState } from '../types';
 
@@ -47,11 +48,13 @@ export function setDatasource(datasource: Dataset) {
 
 export function changeDatasource(newDatasource: Dataset) {
   return function (dispatch: Dispatch, getState: () => ExplorePageState) {
-    const {
-      explore: { datasource: prevDatasource },
-    } = getState();
+    const state = getState();
+    const { explore: { datasource: prevDatasource } } = state;
     dispatch(setDatasource(newDatasource));
     dispatch(updateFormDataByDatasource(prevDatasource, newDatasource));
+
+    const chartId = state.explore.form_data?.slice_id ?? 0;
+    dispatch(triggerQuery(true, chartId));
   };
 }
 
