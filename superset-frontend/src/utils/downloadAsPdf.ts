@@ -35,6 +35,61 @@ const pdfCompressionLevel = getBootstrapData().common.pdf_compression_level;
 const generateFileStem = (description: string, date = new Date()) =>
   `${kebabCase(description)}-${date.toISOString().replace(/[: ]/g, '-')}`;
 
+type SavedStyle = {
+  el: HTMLElement;
+  height: string;
+  maxHeight: string;
+  overflow: string;
+  overflowY: string;
+};
+
+/**
+ * Temporarily expand an element and its scrollable ancestors so that
+ * all content is visible for capture. Returns a cleanup function that
+ * restores the original inline styles.
+ */
+function expandElementForCapture(element: HTMLElement): () => void {
+  const saved: SavedStyle[] = [];
+
+  const expand = (el: HTMLElement) => {
+    saved.push({
+      el,
+      height: el.style.height,
+      maxHeight: el.style.maxHeight,
+      overflow: el.style.overflow,
+      overflowY: el.style.overflowY,
+    });
+    el.style.height = 'auto';
+    el.style.maxHeight = 'none';
+    el.style.overflow = 'visible';
+    el.style.overflowY = 'visible';
+  };
+
+  expand(element);
+
+  let parent = element.parentElement;
+  while (parent && parent !== document.body) {
+    const computed = window.getComputedStyle(parent);
+    if (
+      computed.overflow !== 'visible' ||
+      computed.overflowY !== 'visible' ||
+      computed.height !== 'auto'
+    ) {
+      expand(parent);
+    }
+    parent = parent.parentElement;
+  }
+
+  return () => {
+    saved.forEach(({ el, height, maxHeight, overflow, overflowY }) => {
+      el.style.height = height;
+      el.style.maxHeight = maxHeight;
+      el.style.overflow = overflow;
+      el.style.overflowY = overflowY;
+    });
+  };
+}
+
 /**
  * Create an event handler for turning an element into an image
  *
@@ -49,7 +104,7 @@ export default function downloadAsPdf(
   description: string,
   isExactSelector = false,
 ) {
-  return (event: SyntheticEvent) => {
+  return async (event: SyntheticEvent) => {
     const elementToPrint = isExactSelector
       ? document.querySelector(selector)
       : event.currentTarget.closest(selector);
@@ -60,20 +115,25 @@ export default function downloadAsPdf(
       );
     }
 
+    const restoreStyles = expandElementForCapture(
+      elementToPrint as HTMLElement,
+    );
+
     const options = {
-      margin: 10,
       compression: pdfCompressionLevel,
       filename: `${generateFileStem(description)}.pdf`,
-      image: { type: 'jpeg', quality: 1 },
-      html2canvas: { scale: 2 },
       excludeClassNames: ['header-controls'],
+      scale: 2,
     };
-    return domToPdf(elementToPrint, options)
-      .then(() => {
-        // nothing to be done
-      })
-      .catch((e: Error) => {
-        logging.error('PDF generation failed', e);
-      });
+
+    try {
+      await domToPdf(elementToPrint, options);
+    } catch (e) {
+      logging.error('PDF generation failed', e);
+    } finally {
+      restoreStyles();
+    }
+
+    return undefined;
   };
 }
