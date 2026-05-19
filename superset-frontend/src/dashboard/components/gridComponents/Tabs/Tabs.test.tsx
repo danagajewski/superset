@@ -264,6 +264,24 @@ test('Switching tabs', () => {
   expect(props.onChangeTab).toHaveBeenCalled();
 });
 
+test('Switching tabs updates the URL hash with the active tab ID', () => {
+  const replaceStateSpy = jest.spyOn(window.history, 'replaceState');
+  const props = createProps();
+  render(<Tabs {...props} />, {
+    useRedux: true,
+    useDnd: true,
+  });
+
+  userEvent.click(screen.getAllByRole('tab')[2]);
+
+  expect(replaceStateSpy).toHaveBeenCalledWith(
+    null,
+    '',
+    expect.stringContaining('#TAB-YT6eNksV-'),
+  );
+  replaceStateSpy.mockRestore();
+});
+
 test('Call "DashboardComponent.onDropOnTab"', async () => {
   const props = createProps();
   render(<Tabs {...props} />, {
