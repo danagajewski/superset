@@ -157,6 +157,9 @@ class WebDriverProxy(ABC):
         self._window: WindowSize = window or (800, 600)
         self._screenshot_locate_wait = app.config["SCREENSHOT_LOCATE_WAIT"]
         self._screenshot_load_wait = app.config["SCREENSHOT_LOAD_WAIT"]
+        self._screenshot_render_wait: int = app.config.get(
+            "SCREENSHOT_WAIT_FOR_CHART_RENDER", 5
+        )
 
     @abstractmethod
     def get_screenshot(self, url: str, element_name: str, user: User) -> bytes | None:
@@ -358,6 +361,7 @@ class WebDriverPlaywright(WebDriverProxy):
                             element_name,
                             tile_height,
                             load_wait=self._screenshot_load_wait,
+                            render_wait=self._screenshot_render_wait,
                         )
                         if img is None:
                             logger.warning(
@@ -366,54 +370,17 @@ class WebDriverPlaywright(WebDriverProxy):
                                     "falling back to standard screenshot"
                                 )
                             )
+                            self._playwright_wait_for_loading(page, url)
                             img = WebDriverPlaywright._get_screenshot(
                                 page, element, element_name
                             )
                     else:
-                        # Standard screenshot captures the full element including
-                        # below-the-fold content, so wait for all spinners globally.
-                        try:
-                            logger.debug(
-                                "Wait for loading element of charts to be gone"
-                                " at url: %s",
-                                url,
-                            )
-                            page.wait_for_function(
-                                "() => document.querySelectorAll("
-                                "'.loading').length === 0",
-                                timeout=self._screenshot_load_wait * 1000,
-                            )
-                        except PlaywrightTimeout:
-                            logger.warning(
-                                "Timed out waiting for charts to load at url %s "
-                                "(SCREENSHOT_LOAD_WAIT=%ss)",
-                                url,
-                                self._screenshot_load_wait,
-                            )
-                            raise
+                        self._playwright_wait_for_loading(page, url)
                         img = WebDriverPlaywright._get_screenshot(
                             page, element, element_name
                         )
                 else:
-                    # Standard screenshot captures the full element including
-                    # below-the-fold content, so wait for all spinners globally.
-                    try:
-                        logger.debug(
-                            "Wait for loading element of charts to be gone at url: %s",
-                            url,
-                        )
-                        page.wait_for_function(
-                            "() => document.querySelectorAll('.loading').length === 0",
-                            timeout=self._screenshot_load_wait * 1000,
-                        )
-                    except PlaywrightTimeout:
-                        logger.warning(
-                            "Timed out waiting for charts to load at url %s "
-                            "(SCREENSHOT_LOAD_WAIT=%ss)",
-                            url,
-                            self._screenshot_load_wait,
-                        )
-                        raise
+                    self._playwright_wait_for_loading(page, url)
                     img = WebDriverPlaywright._get_screenshot(
                         page, element, element_name
                     )
@@ -427,6 +394,48 @@ class WebDriverPlaywright(WebDriverProxy):
             finally:
                 browser.close()
             return img
+
+    def _playwright_wait_for_loading(self, page: Page, url: str) -> None:
+        """
+        Wait for all loading spinners to disappear and stay gone.
+
+        Performs a two-phase wait to guard against dashboards where charts
+        load in waves: after all ``.loading`` elements disappear the first
+        time, a brief stabilization period is observed.  If new spinners
+        appear during that window the wait restarts automatically.
+        """
+        render_wait = self._screenshot_render_wait
+        load_wait_ms = self._screenshot_load_wait * 1000
+
+        try:
+            logger.debug("Wait for loading spinners to be gone at url: %s", url)
+            # Phase 1: wait until no .loading elements remain.
+            page.wait_for_function(
+                "() => document.querySelectorAll('.loading').length === 0",
+                timeout=load_wait_ms,
+            )
+
+            # Phase 2: stabilization – confirm spinners stay gone.
+            logger.debug(
+                "Stabilization wait of %ss for chart render at url: %s",
+                render_wait,
+                url,
+            )
+            page.wait_for_timeout(render_wait * 1000)
+
+            # Phase 3: re-verify no new spinners appeared during the wait.
+            page.wait_for_function(
+                "() => document.querySelectorAll('.loading').length === 0",
+                timeout=load_wait_ms,
+            )
+        except PlaywrightTimeout:
+            logger.warning(
+                "Timed out waiting for charts to load at url %s "
+                "(SCREENSHOT_LOAD_WAIT=%ss)",
+                url,
+                self._screenshot_load_wait,
+            )
+            raise
 
 
 class WebDriverSelenium(WebDriverProxy):
@@ -623,6 +632,43 @@ class WebDriverSelenium(WebDriverProxy):
 
         return error_messages
 
+    def _selenium_wait_for_loading(self, driver: WebDriver, url: str) -> None:
+        """
+        Wait for all loading spinners to disappear and stay gone.
+
+        Mirrors the Playwright stabilization logic: after all ``.loading``
+        elements disappear, a brief render wait is observed and the check
+        is repeated to catch dashboards where charts load in waves.
+        """
+        render_wait = self._screenshot_render_wait
+
+        try:
+            logger.debug("Wait for loading spinners to be gone at url: %s", url)
+            # Phase 1: wait until no .loading elements remain.
+            WebDriverWait(driver, self._screenshot_load_wait).until_not(
+                EC.presence_of_all_elements_located((By.CLASS_NAME, "loading"))
+            )
+
+            # Phase 2: stabilization – confirm spinners stay gone.
+            logger.debug(
+                "Stabilization wait of %ss for chart render at url: %s",
+                render_wait,
+                url,
+            )
+            sleep(render_wait)
+
+            # Phase 3: re-verify no new spinners appeared during the wait.
+            WebDriverWait(driver, self._screenshot_load_wait).until_not(
+                EC.presence_of_all_elements_located((By.CLASS_NAME, "loading"))
+            )
+        except TimeoutException:
+            logger.warning(
+                "Selenium timed out waiting for charts to load at url %s",
+                url,
+                exc_info=True,
+            )
+            raise
+
     def get_screenshot(self, url: str, element_name: str, user: User) -> bytes | None:  # noqa: C901
         driver = self.auth(user)
         driver.set_window_size(*self._window)
@@ -672,21 +718,7 @@ class WebDriverSelenium(WebDriverProxy):
                     )
                     raise
 
-            try:
-                # charts took too long to load
-                logger.debug(
-                    "Wait for loading element of charts to be gone at url: %s", url
-                )
-                WebDriverWait(driver, self._screenshot_load_wait).until_not(
-                    EC.presence_of_all_elements_located((By.CLASS_NAME, "loading"))
-                )
-            except TimeoutException:
-                logger.warning(
-                    "Selenium timed out waiting for charts to load at url %s",
-                    url,
-                    exc_info=True,
-                )
-                raise
+            self._selenium_wait_for_loading(driver, url)
 
             selenium_animation_wait = app.config["SCREENSHOT_SELENIUM_ANIMATION_WAIT"]
             logger.debug("Wait %i seconds for chart animation", selenium_animation_wait)

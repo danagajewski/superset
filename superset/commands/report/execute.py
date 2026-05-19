@@ -17,6 +17,7 @@
 import logging
 from collections.abc import Sequence
 from datetime import datetime, timedelta, timezone
+from time import sleep
 from typing import Any, Optional, Union
 from uuid import UUID
 
@@ -410,7 +411,12 @@ class BaseReportState:
 
     def _get_screenshots(self) -> list[bytes]:
         """
-        Get chart or dashboard screenshots
+        Get chart or dashboard screenshots.
+
+        Uses a retry loop so that transient failures (e.g. a chart that
+        was still loading when the page was first captured) can be
+        recovered from by re-opening the page in a fresh browser session.
+
         :raises: ReportScheduleScreenshotFailedError
         """
         start_time = datetime.now(tz=timezone.utc)
@@ -455,44 +461,71 @@ class BaseReportState:
                 )
                 for url in urls
             ]
-        try:
-            imges = []
-            for screenshot in screenshots:
-                if imge := screenshot.get_screenshot(user=user):
-                    imges.append(imge)
-            elapsed_seconds = (
-                datetime.now(tz=timezone.utc) - start_time
-            ).total_seconds()
-            logger.info(
-                "Screenshot capture took %.2fs - execution_id: %s",
-                elapsed_seconds,
-                self._execution_id,
-            )
-        except SoftTimeLimitExceeded as ex:
-            elapsed_seconds = (
-                datetime.now(tz=timezone.utc) - start_time
-            ).total_seconds()
-            logger.warning(
-                "Screenshot timeout after %.2fs - execution_id: %s",
-                elapsed_seconds,
-                self._execution_id,
-            )
-            raise ReportScheduleScreenshotTimeout() from ex
-        except Exception as ex:
-            elapsed_seconds = (
-                datetime.now(tz=timezone.utc) - start_time
-            ).total_seconds()
-            logger.error(
-                "Screenshot failed after %.2fs - execution_id: %s",
-                elapsed_seconds,
-                self._execution_id,
-            )
+
+        max_retries: int = app.config.get("ALERT_REPORTS_SCREENSHOT_MAX_RETRIES", 1)
+        retry_delay: int = app.config.get("ALERT_REPORTS_SCREENSHOT_RETRY_DELAY", 5)
+        last_exc: Exception | None = None
+
+        for attempt in range(max_retries):
+            try:
+                imges: list[bytes] = []
+                for screenshot in screenshots:
+                    if imge := screenshot.get_screenshot(user=user):
+                        imges.append(imge)
+                elapsed_seconds = (
+                    datetime.now(tz=timezone.utc) - start_time
+                ).total_seconds()
+                logger.info(
+                    "Screenshot capture took %.2fs (attempt %d/%d) - execution_id: %s",
+                    elapsed_seconds,
+                    attempt + 1,
+                    max_retries,
+                    self._execution_id,
+                )
+                if imges:
+                    return imges
+            except SoftTimeLimitExceeded as ex:
+                elapsed_seconds = (
+                    datetime.now(tz=timezone.utc) - start_time
+                ).total_seconds()
+                logger.warning(
+                    "Screenshot timeout after %.2fs - execution_id: %s",
+                    elapsed_seconds,
+                    self._execution_id,
+                )
+                raise ReportScheduleScreenshotTimeout() from ex
+            except Exception as ex:
+                last_exc = ex
+                elapsed_seconds = (
+                    datetime.now(tz=timezone.utc) - start_time
+                ).total_seconds()
+                if attempt < max_retries - 1:
+                    logger.warning(
+                        "Screenshot attempt %d/%d failed after %.2fs, "
+                        "retrying in %ds - execution_id: %s - error: %s",
+                        attempt + 1,
+                        max_retries,
+                        elapsed_seconds,
+                        retry_delay,
+                        self._execution_id,
+                        str(ex),
+                    )
+                    sleep(retry_delay)
+                else:
+                    logger.error(
+                        "Screenshot failed after %.2fs - execution_id: %s",
+                        elapsed_seconds,
+                        self._execution_id,
+                    )
+                    raise ReportScheduleScreenshotFailedError(
+                        f"Failed taking a screenshot {str(ex)}"
+                    ) from ex
+
+        if last_exc:
             raise ReportScheduleScreenshotFailedError(
-                f"Failed taking a screenshot {str(ex)}"
-            ) from ex
-        if not imges:
-            raise ReportScheduleScreenshotFailedError()
-        return imges
+                f"Failed taking a screenshot {str(last_exc)}"
+            ) from last_exc
+        raise ReportScheduleScreenshotFailedError()
 
     def _get_pdf(self) -> bytes:
         """
