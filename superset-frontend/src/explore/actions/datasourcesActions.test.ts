@@ -23,6 +23,7 @@ import {
   changeDatasource,
   saveDataset,
 } from 'src/explore/actions/datasourcesActions';
+import { triggerQuery } from 'src/components/Chart/chartAction';
 import datasourcesReducer from '../reducers/datasourcesReducer';
 import { updateFormDataByDatasource } from './exploreActions';
 
@@ -91,17 +92,19 @@ test('change datasource action', () => {
   const getState = jest.fn(() => ({
     explore: {
       datasource: CURRENT_DATASOURCE,
+      form_data: { slice_id: 42 },
     },
   }));
   // ignore getState type check - we dont need explore.datasource field for this test
   // @ts-expect-error
   changeDatasource(NEW_DATASOURCE)(dispatch, getState);
-  expect(dispatch).toHaveBeenCalledTimes(2);
+  expect(dispatch).toHaveBeenCalledTimes(3);
   expect(dispatch).toHaveBeenNthCalledWith(1, setDatasource(NEW_DATASOURCE));
   expect(dispatch).toHaveBeenNthCalledWith(
     2,
     updateFormDataByDatasource(CURRENT_DATASOURCE, NEW_DATASOURCE),
   );
+  expect(dispatch).toHaveBeenNthCalledWith(3, triggerQuery(true, 42));
 });
 
 test('saveDataset handles success', async () => {
