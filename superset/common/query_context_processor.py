@@ -225,6 +225,7 @@ class QueryContextProcessor:
                 extra_cache_keys=extra_cache_keys,
                 rls=security_manager.get_rls_cache_key(datasource),
                 changed_on=datasource.changed_on,
+                column_names=sorted(datasource.column_names),
                 **kwargs,
             )
             if query_obj
