@@ -73,6 +73,8 @@ export type EmbedDashboardParams = {
   /** Callback to resolve permalink URLs. If provided, this will be called when generating permalinks
    * to allow the host app to customize the URL. If not provided, Superset's default URL is used. */
   resolvePermalinkUrl?: ResolvePermalinkUrlFn;
+  /** The theme mode to apply to the embedded dashboard. Accepts 'default' (light), 'dark', or 'system'. */
+  themeMode?: ThemeMode;
 };
 
 export type Size = {
@@ -127,6 +129,7 @@ export async function embedDashboard({
   iframeAllowExtras = [],
   referrerPolicy,
   resolvePermalinkUrl,
+  themeMode,
 }: EmbedDashboardParams): Promise<EmbeddedDashboard> {
   function log(...info: unknown[]) {
     if (debug) {
@@ -254,6 +257,11 @@ export async function embedDashboard({
 
   ourPort.emit('guestToken', { guestToken });
   log('sent guest token');
+
+  if (themeMode) {
+    ourPort.emit('setThemeMode', { mode: themeMode });
+    log(`sent initial theme mode: ${themeMode}`);
+  }
 
   async function refreshGuestToken() {
     const newGuestToken = await fetchGuestToken();
