@@ -715,11 +715,25 @@ export function saveDashboardRequest(
     (cleanedData.metadata as JsonObject).default_filters =
       safeStringify(serializedFilters);
     (cleanedData.metadata as JsonObject).filter_scopes = serializedFilterScopes;
+
+    // Preserve the original dashboard's stored color metadata for the copy
+    // rather than relying on runtime-derived values which may be stale
+    const copyMetadata: JsonObject = {
+      ...(cleanedData.metadata as JsonObject),
+      color_scheme: data.metadata?.color_scheme || '',
+      color_scheme_domain: data.metadata?.color_scheme_domain || [],
+      label_colors: data.metadata?.label_colors || {},
+      shared_label_colors: enforceSharedLabelsColorsArray(
+        data.metadata?.shared_label_colors,
+      ),
+      map_label_colors: data.metadata?.map_label_colors || {},
+    };
+
     const copyPayload = {
       dashboard_title: cleanedData.dashboard_title,
       css: cleanedData.css,
       duplicate_slices: cleanedData.duplicate_slices,
-      json_metadata: JSON.stringify(cleanedData.metadata),
+      json_metadata: JSON.stringify(copyMetadata),
     };
 
     return SupersetClient.post({
