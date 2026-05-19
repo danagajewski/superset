@@ -750,6 +750,52 @@ describe('ResultSet', () => {
     );
   });
 
+  test('export URL should fall back to defaultQueryLimit when queryLimit is undefined', async () => {
+    applicationRootMock.mockReturnValue('');
+    const defaultQueryLimit = 500;
+
+    const { getByTestId } = setup(
+      { ...mockedProps, queryId: queryWithNoQueryLimit.id, defaultQueryLimit },
+      mockStore({
+        ...initialState,
+        user: {
+          ...user,
+          roles: {
+            sql_lab: [['can_export_csv', 'SQLLab']],
+          },
+        },
+        sqlLab: {
+          ...initialState.sqlLab,
+          queries: {
+            [queryWithNoQueryLimit.id]: {
+              ...queryWithNoQueryLimit,
+              queryLimit: undefined,
+              results: {
+                ...queryWithNoQueryLimit.results,
+                query: undefined,
+              },
+            },
+          },
+        },
+        common: {
+          conf: {
+            CSV_STREAMING_ROW_THRESHOLD: 1000,
+          },
+        },
+      }),
+    );
+
+    await waitFor(() => {
+      expect(getByTestId('export-csv-button')).toBeInTheDocument();
+    });
+
+    const exportButton = getByTestId('export-csv-button');
+    expect(exportButton).toHaveAttribute(
+      'href',
+      expect.stringContaining(`?row_limit=${defaultQueryLimit}`),
+    );
+  });
+
   test.each([
     {
       name: 'no prefix (default deployment)',
