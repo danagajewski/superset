@@ -530,3 +530,55 @@ class TestSqlLabApi(SupersetTestCase):
         assert data == expected_data, f"CSV data mismatch. Got: {data}"
         db.session.delete(query_obj)
         db.session.commit()
+
+    @mock.patch("superset.models.sql_lab.Query.raise_for_access", lambda _: None)  # noqa: PT008
+    @mock.patch("superset.models.core.Database.get_df")
+    def test_export_results_with_row_limit(self, get_df_mock: mock.Mock) -> None:
+        self.login(ADMIN_USERNAME)
+
+        database = get_example_database()
+        query_obj = Query(
+            client_id="test_row_limit",
+            database=database,
+            tab_name="test_tab",
+            sql_editor_id="test_editor_id",
+            sql="select * from bar",
+            select_sql=None,
+            executed_sql="select * from bar",
+            limit=100,
+            select_as_cta=False,
+            rows=104,
+            error_message="none",
+            results_key="test_abc_row_limit",
+        )
+
+        db.session.add(query_obj)
+        db.session.commit()
+
+        get_df_mock.return_value = pd.DataFrame(
+            {"foo": [1, 2, 3, 4, 5]}
+        )
+
+        resp = self.get_resp(
+            "/api/v1/sqllab/export/test_row_limit/?row_limit=2"
+        )
+
+        assert resp.startswith("\ufeff"), "Missing UTF-8 BOM at beginning of CSV"
+
+        reader = csv.reader(io.StringIO(resp))
+        data = list(reader)
+
+        if data and data[0]:
+            data[0][0] = data[0][0].lstrip("\ufeff")
+
+        expected_data = [
+            ["foo"],
+            ["1"],
+            ["2"],
+        ]
+
+        assert data == expected_data, (
+            f"CSV should only contain 2 rows due to row_limit=2. Got: {data}"
+        )
+        db.session.delete(query_obj)
+        db.session.commit()

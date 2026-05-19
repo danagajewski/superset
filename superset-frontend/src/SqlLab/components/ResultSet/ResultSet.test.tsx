@@ -796,6 +796,43 @@ describe('ResultSet', () => {
     );
   });
 
+  test('non-streaming export URL should include row_limit from results.query.limit when queryLimit is not set', async () => {
+    applicationRootMock.mockReturnValue('');
+    const { getByTestId } = setup(
+      { ...mockedProps, queryId: queryWithNoQueryLimit.id },
+      mockStore({
+        ...initialState,
+        user: {
+          ...user,
+          roles: {
+            sql_lab: [['can_export_csv', 'SQLLab']],
+          },
+        },
+        sqlLab: {
+          ...initialState.sqlLab,
+          queries: {
+            [queryWithNoQueryLimit.id]: queryWithNoQueryLimit,
+          },
+        },
+        common: {
+          conf: {
+            CSV_STREAMING_ROW_THRESHOLD: 1000,
+          },
+        },
+      }),
+    );
+
+    await waitFor(() => {
+      expect(getByTestId('export-csv-button')).toBeInTheDocument();
+    });
+
+    const exportButton = getByTestId('export-csv-button');
+    expect(exportButton).toHaveAttribute(
+      'href',
+      expect.stringContaining('?row_limit=100'),
+    );
+  });
+
   test.each([
     {
       name: 'no prefix (default deployment)',
