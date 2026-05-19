@@ -41,6 +41,7 @@ const buildQuery: BuildQuery<PluginFilterSelectQueryFormData> = (
         const label = getColumnLabel(column);
         if (
           coltypeMap[label] === GenericDataType.String ||
+          coltypeMap[label] === GenericDataType.Boolean ||
           (coltypeMap[label] === GenericDataType.Numeric &&
             !Number.isNaN(Number(search)))
         ) {

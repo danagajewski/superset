@@ -18,6 +18,7 @@
  */
 import { AppSection, Behavior, ChartProps } from '@superset-ui/core';
 import { supersetTheme } from '@apache-superset/core/theme';
+import { GenericDataType } from '@apache-superset/core/common';
 import {
   act,
   fireEvent,
@@ -885,6 +886,7 @@ test('Select both boolean values in multi-select mode', async () => {
       {
         ...selectMultipleProps.queriesData[0],
         colnames: ['is_active'],
+        coltypes: [GenericDataType.Boolean],
         data: [{ is_active: true }, { is_active: false }],
         applied_filters: [{ column: 'is_active' }],
       },

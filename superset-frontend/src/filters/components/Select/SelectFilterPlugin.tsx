@@ -46,6 +46,7 @@ import {
   propertyComparator,
 } from '@superset-ui/core/components/Select/utils';
 import { FilterBarOrientation } from 'src/dashboard/types';
+import { TRUE_STRING, FALSE_STRING } from 'src/utils/common';
 import { getDataRecordFormatter, getSelectExtraFormData } from '../../utils';
 import { FilterPluginStyle, StatusMessage } from '../common';
 import {
@@ -284,6 +285,18 @@ export default function PluginFilterSelect(props: PluginFilterSelectProps) {
     onSearch('');
   }, [onSearch, unsetFocusedFilter]);
 
+  const isBooleanType = datatype === GenericDataType.Boolean;
+
+  const booleanToString = useCallback(
+    (value: boolean): string => (value ? TRUE_STRING : FALSE_STRING),
+    [],
+  );
+
+  const stringToBoolean = useCallback(
+    (value: string): boolean => value === TRUE_STRING,
+    [],
+  );
+
   const handleChange = useCallback(
     (value?: SelectValue | number | string) => {
       const values = value === null ? [null] : ensureIsArray(value);
@@ -291,10 +304,24 @@ export default function PluginFilterSelect(props: PluginFilterSelectProps) {
       if (values.length === 0) {
         updateDataMask(null);
       } else {
-        updateDataMask(values);
+        const resolved = isBooleanType
+          ? values.map(v =>
+              typeof v === 'string' &&
+              (v === TRUE_STRING || v === FALSE_STRING)
+                ? stringToBoolean(v)
+                : v,
+            )
+          : values;
+        updateDataMask(resolved);
       }
     },
-    [updateDataMask, formData.nativeFilterId, clearAllTrigger],
+    [
+      updateDataMask,
+      formData.nativeFilterId,
+      clearAllTrigger,
+      isBooleanType,
+      stringToBoolean,
+    ],
   );
 
   const placeholderText =
@@ -315,12 +342,18 @@ export default function PluginFilterSelect(props: PluginFilterSelectProps) {
 
   const uniqueOptions = useMemo(() => {
     const allOptions = new Set(data.map(el => el[col]));
-    return [...allOptions].map((value: string) => ({
-      label: labelFormatter(value, datatype),
-      value,
-      isNewOption: false,
-    }));
-  }, [data, datatype, col, labelFormatter]);
+    return [...allOptions].map(value => {
+      const optionValue =
+        isBooleanType && typeof value === 'boolean'
+          ? booleanToString(value)
+          : value;
+      return {
+        label: labelFormatter(value, datatype),
+        value: optionValue,
+        isNewOption: false,
+      };
+    });
+  }, [data, datatype, col, labelFormatter, isBooleanType, booleanToString]);
 
   const options = useMemo(() => {
     if (search && !multiSelect && !hasOption(search, uniqueOptions, true)) {
@@ -593,7 +626,18 @@ export default function PluginFilterSelect(props: PluginFilterSelectProps) {
               autoClearSearchValue
               allowNewOptions={!searchAllOptions && creatable !== false}
               allowSelectAll={!searchAllOptions}
-              value={multiSelect ? filterState.value || [] : filterState.value}
+              value={
+                multiSelect
+                  ? (filterState.value || []).map((v: SelectValue[number]) =>
+                      isBooleanType && typeof v === 'boolean'
+                        ? booleanToString(v)
+                        : v,
+                    )
+                  : isBooleanType &&
+                      typeof filterState.value?.[0] === 'boolean'
+                    ? [booleanToString(filterState.value[0] as boolean)]
+                    : filterState.value
+              }
               disabled={isDisabled}
               getPopupContainer={
                 showOverflow

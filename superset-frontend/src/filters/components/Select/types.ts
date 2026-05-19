@@ -30,7 +30,10 @@ import { RefObject } from 'react';
 import { FilterBarOrientation } from 'src/dashboard/types';
 import { PluginFilterHooks, PluginFilterStylesProps } from '../types';
 
-export type SelectValue = (number | string | null)[] | null | undefined;
+export type SelectValue =
+  | (number | string | boolean | null)[]
+  | null
+  | undefined;
 
 export enum SelectFilterOperatorType {
   Exact = 'exact',
