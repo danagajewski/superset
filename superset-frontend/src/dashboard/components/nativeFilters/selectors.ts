@@ -214,11 +214,13 @@ export const getCrossFilterIndicator = (
 ) => {
   const filterState = dataMask?.filterState;
   const filters = dataMask?.extraFormData?.filters;
-  const label = extractLabel(filterState);
+  const isFilterCleared = Array.isArray(filters) && filters.length === 0;
+  const label = isFilterCleared ? null : extractLabel(filterState);
   const filtersState = filterState?.filters;
   const customColumnLabel = filterState?.customColumnLabel;
-  const column =
-    filters?.[0]?.col || (filtersState && Object.keys(filtersState)[0]);
+  const column = isFilterCleared
+    ? undefined
+    : filters?.[0]?.col || (filtersState && Object.keys(filtersState)[0]);
 
   const chartLayoutItem = chartLayoutItems.find(
     layoutItem => layoutItem?.meta?.chartId === chartId,
