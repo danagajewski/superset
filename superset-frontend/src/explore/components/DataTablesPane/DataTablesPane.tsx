@@ -30,6 +30,37 @@ import {
 import { SamplesPane, useResultsPane } from './components';
 import { DataTablesPaneProps, ResultTypes } from './types';
 
+const defined = <T,>(v: T | undefined | null): v is T => v != null;
+
+const DEFINED_TAB_KEYS = new Set<string>([
+  ResultTypes.Results,
+  ResultTypes.Samples,
+]);
+
+function isValidTabKey(key: string): boolean {
+  if (DEFINED_TAB_KEYS.has(key)) return true;
+  // Multi-query result tabs follow the pattern "results <N>"
+  return /^results \d+$/.test(key);
+}
+
+function getTabKeyFromHash(): string | undefined {
+  const hash = window.location.hash.replace(/^#/, '');
+  if (!hash) return undefined;
+  const params = new URLSearchParams(hash);
+  const tab = params.get('tab');
+  return defined(tab) && isValidTabKey(tab) ? tab : undefined;
+}
+
+function setHashTabKey(tabKey: string): void {
+  const hash = window.location.hash.replace(/^#/, '');
+  const params = new URLSearchParams(hash);
+  params.set('tab', tabKey);
+  const newHash = `#${params.toString()}`;
+  if (`#${hash}` !== newHash) {
+    window.history.replaceState(undefined, '', newHash);
+  }
+}
+
 const StyledDiv = styled.div`
   ${() => `
     display: flex;
@@ -88,7 +119,9 @@ export const DataTablesPane = ({
   setForceQuery,
   canDownload,
 }: DataTablesPaneProps) => {
-  const [activeTabKey, setActiveTabKey] = useState<string>(ResultTypes.Results);
+  const [activeTabKey, setActiveTabKey] = useState<string>(
+    () => getTabKeyFromHash() ?? ResultTypes.Results,
+  );
   const [isRequest, setIsRequest] = useState<Record<ResultTypes, boolean>>({
     results: false,
     samples: false,
@@ -149,6 +182,7 @@ export const DataTablesPane = ({
         handleCollapseChange(false);
       }
       setActiveTabKey(tabKey);
+      setHashTabKey(tabKey);
     },
     [activeTabKey, handleCollapseChange, panelOpen],
   );
