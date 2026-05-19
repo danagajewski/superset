@@ -85,6 +85,16 @@ def test_streaming_sql_result_export_command_init():
     assert command._current_app is not None
 
 
+def test_streaming_sql_result_export_command_init_with_row_limit():
+    """Test command initialization stores row_limit."""
+    command = StreamingSqlResultExportCommand(
+        "client_123", chunk_size=500, row_limit=100
+    )
+
+    assert command._client_id == "client_123"
+    assert command._frontend_row_limit == 100
+
+
 def test_streaming_sql_result_export_command_default_chunk_size():
     """Test command uses default chunk size."""
     command = StreamingSqlResultExportCommand("client_123")
@@ -348,6 +358,91 @@ def test_limiting_factor_query_and_dropdown(mocker, mock_query):
 
         lines = [line.strip() for line in csv_data.strip().split("\n")]
         assert len(lines) == 51
+
+
+def test_row_limit_caps_exported_rows(mocker, mock_query):
+    """Test that row_limit from the frontend caps exported rows."""
+    mock_query.select_sql = "SELECT * FROM test"
+
+    mock_result = MagicMock()
+    mock_result.keys.return_value = ["id", "name"]
+    mock_result.fetchmany.side_effect = [
+        [(1, "a"), (2, "b"), (3, "c"), (4, "d"), (5, "e")],
+        [],
+    ]
+
+    mock_db, mock_session = _setup_sqllab_mocks(mocker, mock_query)
+
+    mock_connection = MagicMock()
+    mock_connection.execution_options.return_value.execute.return_value = mock_result
+    mock_connection.__enter__.return_value = mock_connection
+    mock_connection.__exit__.return_value = None
+
+    mock_engine = MagicMock()
+    mock_engine.connect.return_value = mock_connection
+    mock_query.database.get_sqla_engine.return_value.__enter__.return_value = (
+        mock_engine
+    )
+
+    command = StreamingSqlResultExportCommand(
+        "test_client_123", chunk_size=10, row_limit=3
+    )
+    command.validate()
+
+    csv_generator_callable = command.run()
+    generator = csv_generator_callable()
+    csv_data = "".join(generator)
+
+    lines = [line.strip() for line in csv_data.strip().split("\n")]
+    assert len(lines) == 4  # header + 3 data rows
+    assert lines[0] == "id,name"
+    assert "1,a" in csv_data
+    assert "3,c" in csv_data
+    assert "4,d" not in csv_data
+    assert "5,e" not in csv_data
+
+
+@patch("superset.commands.sql_lab.streaming_export_command.SQLScript")
+def test_row_limit_with_sql_limit(mock_sqlscript, mocker, mock_query):
+    """Test that row_limit caps even when SQL has a larger limit."""
+    mock_query.select_sql = None
+    mock_query.executed_sql = "SELECT * FROM test LIMIT 100"
+    mock_query.limiting_factor = LimitingFactor.NOT_LIMITED
+
+    mock_statement = Mock()
+    mock_statement.get_limit_value.return_value = 100
+    mock_script_instance = Mock()
+    mock_script_instance.statements = [mock_statement]
+    mock_sqlscript.return_value = mock_script_instance
+
+    mock_result = MagicMock()
+    mock_result.keys.return_value = ["id"]
+    mock_result.fetchmany.side_effect = [[(i,) for i in range(10)], []]
+
+    mock_db, mock_session = _setup_sqllab_mocks(mocker, mock_query)
+
+    mock_connection = MagicMock()
+    mock_connection.execution_options.return_value.execute.return_value = mock_result
+    mock_connection.__enter__.return_value = mock_connection
+    mock_connection.__exit__.return_value = None
+
+    mock_engine = MagicMock()
+    mock_engine.connect.return_value = mock_connection
+    mock_query.database.get_sqla_engine.return_value.__enter__.return_value = (
+        mock_engine
+    )
+
+    command = StreamingSqlResultExportCommand(
+        "test_client_123", chunk_size=100, row_limit=5
+    )
+    command.validate()
+
+    csv_generator_callable = command.run()
+    generator = csv_generator_callable()
+    csv_data = "".join(generator)
+
+    lines = [line.strip() for line in csv_data.strip().split("\n")]
+    assert len(lines) == 6  # header + 5 data rows
 
 
 def test_empty_result_set(mocker, mock_query):
