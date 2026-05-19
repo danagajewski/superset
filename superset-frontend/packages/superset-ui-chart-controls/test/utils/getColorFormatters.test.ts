@@ -952,3 +952,28 @@ test('correct column boolean config', () => {
   expect(colorFormatters[3].getColorFromValue(true)).toEqual('#FF0000FF');
   expect(colorFormatters[3].getColorFromValue(false)).toEqual('#FF0000FF');
 });
+
+test('getColorFormatters scales percentage column values for comparison', () => {
+  const percentData = [
+    { '%count': 0.5 },
+    { '%count': 0.75 },
+    { '%count': 1.0 },
+  ];
+  const columnConfig = [
+    {
+      operator: Comparator.GreaterThan,
+      targetValue: 50,
+      colorScheme: '#FF0000',
+      column: '%count',
+    },
+  ];
+  const colorFormatters = getColorFormatters(columnConfig, percentData);
+  expect(colorFormatters).toHaveLength(1);
+  expect(colorFormatters[0].column).toEqual('%count');
+  // 0.5 => 50%, not greater than 50
+  expect(colorFormatters[0].getColorFromValue(0.5)).toBeUndefined();
+  // 0.75 => 75%, greater than 50
+  expect(colorFormatters[0].getColorFromValue(0.75)).toBeDefined();
+  // 1.0 => 100%, greater than 50
+  expect(colorFormatters[0].getColorFromValue(1.0)).toBeDefined();
+});
