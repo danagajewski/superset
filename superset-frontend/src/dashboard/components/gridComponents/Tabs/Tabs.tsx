@@ -246,6 +246,11 @@ const Tabs = (props: TabsProps): ReactElement => {
       // Always set activeKey to ensure it's synchronized
       if (tabIds[tabIndex]) {
         setActiveKey(tabIds[tabIndex]);
+        window.history.replaceState(
+          null,
+          '',
+          `${window.location.pathname}${window.location.search}#${tabIds[tabIndex]}`,
+        );
       }
     },
     [
