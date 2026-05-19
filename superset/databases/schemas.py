@@ -625,6 +625,15 @@ class DatabaseTestConnectionSchema(DatabaseParametersSchemaMixin, Schema):
 
     ssh_tunnel = fields.Nested(DatabaseSSHTunnel, allow_none=True)
 
+    timeout = fields.Integer(
+        metadata={
+            "description": "Timeout for the connection test in seconds. "
+            "If not specified, the configured default is used."
+        },
+        allow_none=True,
+        load_default=None,
+    )
+
 
 class TableMetadataOptionsResponse(TypedDict):
     deferrable: bool

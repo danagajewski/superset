@@ -67,6 +67,7 @@ class TestConnectionDatabaseCommand(BaseCommand):
 
     def __init__(self, data: dict[str, Any]):
         self._properties = data.copy()
+        self._timeout: int | None = self._properties.pop("timeout", None)
 
         if (database_name := self._properties.get("database_name")) is not None:
             self._model = DatabaseDAO.get_database_by_name(database_name)
@@ -141,7 +142,7 @@ class TestConnectionDatabaseCommand(BaseCommand):
 
             with database.get_sqla_engine() as engine:
                 try:
-                    alive = ping(engine)
+                    alive = ping(engine, self._timeout)
                 except SupersetTimeoutException as ex:
                     raise SupersetTimeoutException(
                         error_type=SupersetErrorType.CONNECTION_DATABASE_TIMEOUT,

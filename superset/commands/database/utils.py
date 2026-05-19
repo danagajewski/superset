@@ -38,10 +38,14 @@ from superset.utils.core import timeout
 logger = logging.getLogger(__name__)
 
 
-def ping(engine: Engine) -> bool:
+def ping(engine: Engine, timeout_override: int | None = None) -> bool:
     try:
-        time_delta = app.config["TEST_DATABASE_CONNECTION_TIMEOUT"]
-        with timeout(int(time_delta.total_seconds())):
+        if timeout_override is not None:
+            seconds = timeout_override
+        else:
+            time_delta = app.config["TEST_DATABASE_CONNECTION_TIMEOUT"]
+            seconds = int(time_delta.total_seconds())
+        with timeout(seconds):
             with closing(engine.raw_connection()) as conn:
                 return engine.dialect.do_ping(conn)
     except (sqlite3.ProgrammingError, RuntimeError):
